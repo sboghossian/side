@@ -2,7 +2,7 @@
 # Side — your AI sidekick · https://github.com/sboghossian/side
 set -e
 
-VERSION="0.1.0"
+VERSION="0.2.0"
 SIDE_HOME="${SIDE_HOME:-$HOME/.side}"
 PORT="${SIDE_PORT:-4600}"
 BASE="${SIDE_BASE:-https://sboghossian.github.io/side}"
@@ -28,8 +28,9 @@ case "${1:-}" in
   -v|--version) echo "side $VERSION"; exit 0 ;;
   update)
     echo "-> updating Side"
-    mkdir -p "$SIDE_HOME/app"
+    mkdir -p "$SIDE_HOME/app" "$SIDE_HOME/bin"
     curl -fsSL "$BASE/app/index.html" -o "$SIDE_HOME/app/index.html"
+    curl -fsSL "$BASE/bin/side-serve.py" -o "$SIDE_HOME/bin/side-serve.py"
     echo "OK updated. run \`side\` to start."
     exit 0
     ;;
@@ -50,7 +51,11 @@ listening() {
   else nc -z 127.0.0.1 "$PORT" >/dev/null 2>&1; fi
 }
 if ! listening; then
-  ( cd "$SIDE_HOME/app" && nohup python3 -m http.server "$PORT" --bind 127.0.0.1 </dev/null >/dev/null 2>&1 & )
+  if [ -f "$SIDE_HOME/bin/side-serve.py" ]; then
+    ( cd "$SIDE_HOME/app" && nohup python3 "$SIDE_HOME/bin/side-serve.py" --port "$PORT" --dir "$SIDE_HOME/app" </dev/null >/dev/null 2>&1 & )
+  else
+    ( cd "$SIDE_HOME/app" && nohup python3 -m http.server "$PORT" --bind 127.0.0.1 </dev/null >/dev/null 2>&1 & )
+  fi
   i=0
   while ! listening && [ "$i" -lt 20 ]; do i=$((i+1)); sleep 0.1; done
 fi
