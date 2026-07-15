@@ -1,8 +1,8 @@
 {
-  "pid": 38797,
-  "port": 56534,
-  "token": "d265f5c6-3d09-4077-970c-521efeae34bf",
-  "startedAt": "2026-07-15T10:16:27.903Z",
+  "pid": 74438,
+  "port": 11749,
+  "token": "e7c32650-087e-42ce-8585-28403200da5b",
+  "startedAt": "2026-07-15T11:23:06.248Z",
   "serverPath": "/Users/stephaneboghossian/.claude/skills/gstack/browse/src/server.ts",
   "mode": "launched"
 }

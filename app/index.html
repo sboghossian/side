@@ -2570,10 +2570,12 @@ textarea.inp{resize:vertical;min-height:74px;line-height:1.5}
             </div>
           </div>
         </div>
+        <div class="flowview" id="flowview"></div>
         <div class="cfloat" id="cfloat">
           <button class="run-btn" id="run-btn"><span class="i" data-ic="play"></span> <span class="rl">Run</span></button>
           <button class="tb-ic" id="tb-build" title="Add a block"><span class="i" data-ic="plus"></span></button>
           <button class="tb-ic" id="tb-agent" title="Agent settings &mdash; change everything"><span class="i" data-ic="sliders"></span></button>
+          <button class="tb-ic" id="tb-flowmap" title="Switch Flow / Map view"><span class="i" data-ic="swap"></span></button>
           <span class="cfloat-sep"></span>
           <div class="zoomer"><button data-zoom="-"><span class="i" data-ic="minus"></span></button><span class="zv" id="zv">100%</span><button data-zoom="+"><span class="i" data-ic="plus"></span></button></div>
           <button class="tb-ic" data-zoom="fit" title="Fit to screen"><span class="i" data-ic="fit"></span></button>
@@ -3228,6 +3230,7 @@ function renderCanvas(){
   drawEdges();hydrate(world);
   if(typeof renderMinimap==='function')renderMinimap();
   if(typeof renderTabs==='function')renderTabs();
+  if(typeof sideFlowRerender==='function'&&$('#s-app').classList.contains('cmode-flow'))sideFlowRerender();
   var cc=$('#ct-cost');if(cc){var ag=AGENTS.filter(function(a){return a.slug===curSlug;})[0];cc.textContent=ag?ag.cost:'$0.00';}
   /* browser is a sidebar element now, not a draggable canvas card: remove any stray session/overlay */
   var _vp=$('#viewport');if(_vp){var _bx=_vp.querySelector('.bx-session');if(_bx&&_bx.parentNode)_bx.parentNode.removeChild(_bx);var _ov=_vp.querySelector('.bx-overlay');if(_ov&&_ov.parentNode)_ov.parentNode.removeChild(_ov);}
@@ -3385,7 +3388,7 @@ function runEngine(){
   if(sideEngineOn()&&window.wfStartRun&&CUR_VIEW==='canvas'&&$('#viewport')&&gR&&gR.nodes&&gR.nodes.length){
     running=true;var rbtn=$('#run-btn');if(rbtn){rbtn.classList.add('running');var rl0=rbtn.querySelector('.rl');if(rl0)rl0.textContent='Running';}
     var steps=gR.nodes.map(function(n){return {id:n.id,name:n.title};});
-    window.wfStartRun($('#viewport'),{auto:false,steps:steps,onView:function(){
+    window.wfStartRun(sideRunHost(),{auto:false,steps:steps,onView:function(){
       var hasGate=gR.nodes.filter(function(n){return nodeKind(n)==='gate';}).length>0;
       if(hasGate&&typeof openGateFlow==='function'){openGateFlow({title:'Ship '+(typeof agentName==='function'?agentName():'this run'),onApprove:function(){sideAfterShip();}});}
       else{sideAfterShip();}
@@ -3395,17 +3398,17 @@ function runEngine(){
       onNodeDone:function(n){if(window.wfSetNodeState)window.wfSetNodeState(n.id,'done');if(window.wfAdvance)window.wfAdvance();}
     },function(err,res){
       running=false;var b2=$('#run-btn');if(b2){b2.classList.remove('running');var r2=b2.querySelector('.rl');if(r2)r2.textContent='Run';}
-      if(err){if(window.wfClear)window.wfClear($('#viewport'));toast('Run failed: '+err.message);return;}
+      if(err){if(window.wfClear)window.wfClear(sideRunHost());toast('Run failed: '+err.message);return;}
       LASTRUN[curSlug]=res;gR.nodes.forEach(function(n){n.status='done';});
       for(var ui=0;ui<USER_AGENTS.length;ui++){if(USER_AGENTS[ui].slug===curSlug){USER_AGENTS[ui].status='done';USER_AGENTS[ui].cost='$'+((res.totalCost||0)).toFixed(2);USER_AGENTS[ui].last='now';}}
       sideStateSave();
-      if(window.wfFinishRun)window.wfFinishRun($('#viewport'));
+      if(window.wfFinishRun)window.wfFinishRun(sideRunHost());
     });
     return;
   }
   if(window.wfStartRun&&CUR_VIEW==='canvas'&&$('#viewport')){
     running=true;var rb=$('#run-btn');if(rb){rb.classList.add('running');var rrl=rb.querySelector('.rl');if(rrl)rrl.textContent='Running';}
-    window.wfStartRun($('#viewport'),{onView:function(){
+    window.wfStartRun(sideRunHost(),{onView:function(){
       var gg=curGraph();var hasGate=gg&&gg.nodes&&gg.nodes.filter(function(n){return nodeKind(n)==='gate';}).length>0;
       if(hasGate&&typeof openGateFlow==='function'){openGateFlow({title:'Ship '+(typeof agentName==='function'?agentName():'this run'),onApprove:function(){if(typeof openAgentReport==='function')openAgentReport(curSlug);}});}
       else if(typeof openAgentReport==='function'){openAgentReport(curSlug);}
@@ -4517,6 +4520,50 @@ window.SidePipeline={
     return 'GLOBAL PIPELINE (user-configured; the fleet MUST follow it): first '+pre.join(', then ')+'. This request is classified as "'+b.t+'". Compose the sub-agents to cover these workstreams in order: '+steps.join(' -> ')+'. '+((b.gate&&b.gate.on)?('End with an approval gate (set "gate":true, "gateLabel":"'+(b.gate.label||'your yes').replace(/&[a-z]+;/g,'-')+'").'):'No hard gate needed (set "gate":false).');
   }
 };
+function sideCanvasMode(){try{return localStorage.getItem('side_canvas_mode')||'flow';}catch(e){return 'flow';}}
+function sideSetCanvasMode(m){
+  try{localStorage.setItem('side_canvas_mode',m);}catch(e){}
+  var app=$('#s-app');if(app)app.classList.toggle('cmode-flow',m==='flow');
+  if(CUR_VIEW==='canvas'){if(m==='flow')sideFlowRerender();else{if(typeof drawEdges==='function')drawEdges();}}
+  toast(m==='flow'?'Flow view \u2014 fast + structured':'Map view \u2014 the full canvas');
+}
+function sideRunHost(){var app=$('#s-app');if(app&&app.classList.contains('cmode-flow')){var fv=$('#flowview');if(fv)return fv;}return $('#viewport');}
+function sideFlowRerender(){
+  var fv=$('#flowview');
+  if(fv&&window.buildFlowView&&CUR_VIEW==='canvas'){window.buildFlowView(fv,sideFlowApi());}
+}
+function sideFlowApi(){
+  var g=curGraph();
+  return {
+    graph:g,title:((typeof GRAPHTITLE!=='undefined'&&GRAPHTITLE[curSlug])||curSlug),editable:true,
+    nodeColor:nodeColor,
+    openNode:function(id){openInsp(id);},
+    run:function(){runEngine();},
+    renameNode:function(id,t){var n=nById(id);if(!n)return;var v=(''+(t||'')).replace(/</g,'').slice(0,42);if(!v)return;n.title=v;GRAPHS[curSlug]=layoutGraph(g);sideGraphPersist();renderCanvas();},
+    removeNode:function(id){var n=nById(id);if(!n)return;var tp=(n.type||'');
+      if(tp==='prompt'||tp==='fork'||tp==='converge'){toast('That node is structural \u2014 it stays');return;}
+      g.nodes=g.nodes.filter(function(x){return x.id!==id;});
+      g.edges=(g.edges||[]).filter(function(e){return e.from!==id&&e.to!==id;});
+      GRAPHS[curSlug]=layoutGraph(g);sideGraphPersist();renderCanvas();toast('Removed '+n.title);},
+    addAgent:function(){
+      var fork=null,conv=null,subRow=null,i;
+      for(i=0;i<g.nodes.length;i++){var nd=g.nodes[i];
+        if(nd.type==='fork')fork=nd;if(nd.type==='converge')conv=nd;
+        if((nd.type==='subagent'||nd.type==='agent')&&subRow===null)subRow=nd.row;}
+      var id='s'+(nodeSeq++);var cols=['L','C','R','LL','RR'];
+      var count=g.nodes.filter(function(x){return x.type==='subagent'||x.type==='agent';}).length;
+      var row=(subRow!==null)?subRow:((fork?(fork.row||1):1)+1);
+      g.nodes.push({id:id,type:'subagent',icon:'agent',title:'New agent',sub:'parallel',body:'Describe what this agent should own.',status:'queued',col:cols[count%5],row:row,model:'Sonnet',cost:'$0.30',tok:'&mdash;',tags:[]});
+      if(fork)g.edges.push({from:fork.id,to:id,kind:'flow'});
+      if(conv)g.edges.push({from:id,to:conv.id,kind:'flow'});
+      if(!fork&&!conv&&g.nodes.length>1){var prev=g.nodes[g.nodes.length-2];g.edges.push({from:prev.id,to:id,kind:'flow'});}
+      GRAPHS[curSlug]=layoutGraph(g);sideGraphPersist();renderCanvas();toast('Added a parallel agent');
+    }
+  };
+}
+function sideGraphPersist(){if(typeof sideRealMode==='function'&&sideRealMode())sideStateSave();}
+try{if(sideCanvasMode()==='flow'){var _capp=document.getElementById('s-app');if(_capp)_capp.classList.add('cmode-flow');}}catch(e){}
+try{var _fmbtn=document.getElementById('tb-flowmap');if(_fmbtn)_fmbtn.addEventListener('click',function(){sideSetCanvasMode(sideCanvasMode()==='flow'?'map':'flow');});}catch(e){}
 sideStateRestore();
 function sideEngineOn(){return !!(window.SideEngine&&window.SideEngine.hasKey&&window.SideEngine.hasKey());}
 function sideDaemonSave(relpath,content,cb){
@@ -10738,7 +10785,7 @@ if(typeof window !== "undefined"){ window.buildBrainGraph = buildBrainGraph; }
   }
   function hyd(el){ if (el && typeof hydrate === 'function'){ try{ hydrate(el); }catch(e){} } }
   function esc(t){ return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  function node(id){ try{ return document.querySelector('.node[data-id="'+String(id).replace(/"/g,'')+'"]'); }catch(e){ return null; } }
+  function node(id){ try{ var sid=String(id).replace(/"/g,''); var app=document.getElementById('s-app'); if (app && app.className.indexOf('cmode-flow')>=0){ var f=document.querySelector('[data-flnode="'+sid+'"]'); if (f) return f; } return document.querySelector('.node[data-id="'+sid+'"]'); }catch(e){ return null; } }
   function clearTimers(){ for (var i=0;i<WF.timers.length;i++){ clearTimeout(WF.timers[i]); } WF.timers=[]; }
   function later(fn,ms){ var t=setTimeout(fn,ms); WF.timers.push(t); return t; }
 
@@ -13319,6 +13366,10 @@ img.fbshot{display:block;width:100%;height:auto;background:var(--surface-2)}
 .lp2 .demo-modes .dm{white-space:nowrap;flex:none}
 </style>
 <style>
+.flowview{flex:1;overflow-y:auto;overflow-x:hidden;min-width:0;display:none;background:var(--surface)}
+#s-app.cmode-flow .flowview{display:block}
+#s-app.cmode-flow .viewport{display:none}
+#s-app.cmode-flow .zoomer,#s-app.cmode-flow [data-zoom="fit"],#s-app.cmode-flow .minimap,#s-app.cmode-flow .nlegend{display:none}
 .onb-keyrow{display:flex;align-items:center;gap:12px;margin-top:2px}
 .onb-keyrow .mono{font-size:.68rem;color:var(--ink-3)}
 .onb-real{margin-top:16px;display:flex;gap:9px;align-items:flex-start;font-size:.8rem;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:11px 13px;line-height:1.5}
@@ -14395,6 +14446,480 @@ img.fbshot{display:block;width:100%;height:auto;background:var(--surface-2)}
 
   window.buildPipelineStudio = buildPipelineStudio;
 
+})();
+</script>
+<style>
+/* flow view (structured canvas projection) */
+.flv-root { font-family: var(--sans); color: var(--ink); width: 100%; box-sizing: border-box; }
+.flv-root *, .flv-root *:before, .flv-root *:after { box-sizing: border-box; }
+
+.flv-canvas { max-width: 980px; margin: 0 auto; padding: 28px; display: flex; flex-direction: column; }
+
+/* ---- head strip ---------------------------------------------------------- */
+.flv-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; padding: 0 2px; }
+.flv-head-left { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; min-width: 0; }
+.flv-head-title { font: 700 16px/1.3 var(--sans); color: var(--ink); }
+.flv-head-meta { font: 11px/1 var(--mono); color: var(--ink-3); background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+.flv-head-hint { font: 11.5px/1.4 var(--sans); color: var(--ink-3); white-space: nowrap; }
+
+/* ---- empty state ---------------------------------------------------------- */
+.flv-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 64px 20px; text-align: center; color: var(--ink-3); }
+.flv-empty .i svg, .flv-empty svg { width: 26px; height: 26px; opacity: .5; }
+.flv-empty-title { font: 600 14px/1.4 var(--sans); color: var(--ink-2); }
+.flv-empty-sub { font: 12.5px/1.5 var(--sans); color: var(--ink-3); max-width: 320px; }
+
+/* ---- row of cards ---------------------------------------------------------- */
+.flv-row { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; padding: 6px 0; }
+
+/* ---- card ---------------------------------------------------------- */
+.flv-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 260px;
+  min-width: 240px;
+  max-width: 340px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px 12px 16px;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  overflow: hidden;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+.flv-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--nc); }
+.flv-card:hover { box-shadow: var(--shadow-md); border-color: var(--line-strong); }
+.flv-card:hover .flv-card-actions { opacity: 1; pointer-events: auto; }
+.flv-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.flv-card-actions { position: absolute; top: 8px; right: 8px; display: flex; gap: 4px; opacity: 0; pointer-events: none; transition: opacity .12s ease; z-index: 2; }
+.flv-btn { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 6px; background: var(--surface-2); color: var(--ink-2); cursor: pointer; padding: 0; }
+.flv-btn:hover { background: var(--surface-3); color: var(--ink); }
+.flv-btn .i svg, .flv-btn svg { width: 13px; height: 13px; display: block; }
+.flv-btn-rm:hover { color: var(--pink); border-color: var(--pink); }
+
+.flv-card-head { display: flex; align-items: center; gap: 8px; padding-right: 44px; min-width: 0; }
+.flv-card-icon { width: 22px; height: 22px; flex: 0 0 auto; display: flex; align-items: center; justify-content: center; border-radius: 6px; background: var(--nc); color: var(--paper); }
+.flv-card-icon .i svg, .flv-card-icon svg { width: 12px; height: 12px; display: block; fill: currentColor; }
+
+.flv-card-title { flex: 1 1 auto; min-width: 0; font: 600 13.5px/1.3 var(--sans); color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-radius: 4px; padding: 1px 3px; margin: -1px -3px; }
+.flv-editable .flv-card-title { cursor: text; }
+.flv-editable .flv-card-title:hover { background: var(--surface-2); }
+
+.flv-edit { flex: 1 1 auto; min-width: 0; font: 600 13.5px/1.3 var(--sans); color: var(--ink); background: var(--surface-2); border: 1px solid var(--accent); border-radius: 4px; padding: 1px 6px; outline: none; }
+
+.flv-dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; background: var(--muted); }
+.flv-dot-queued { background: var(--muted); }
+.flv-dot-run { background: var(--accent); animation: flv-pulse-dot 1.6s ease-in-out infinite; }
+.flv-dot-review { background: var(--warn); }
+.flv-dot-done { background: var(--good); }
+
+.flv-card-sub { font: 11px/1.4 var(--mono); color: var(--ink-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.flv-card-body { font: 12.5px/1.5 var(--sans); color: var(--ink-2); overflow: hidden; max-height: 4.6em; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+
+.flv-card-meta { display: flex; align-items: center; gap: 8px; margin-top: 2px; padding-top: 6px; border-top: 1px dashed var(--line); font: 11px/1 var(--mono); }
+.flv-card-model { color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flv-card-cost { color: var(--ink-3); margin-left: auto; white-space: nowrap; }
+
+/* ---- run-state overlays (host engine toggles these classes) -------------- */
+.flv-card.wf-queued, .flv-card.queued { opacity: .6; border-style: dashed; border-color: var(--line); }
+.flv-card.wf-run, .flv-card.run { border-color: var(--accent); }
+.flv-card.wf-review, .flv-card.review { border-color: var(--warn); }
+.flv-card.wf-done, .flv-card.done { border-color: var(--good); }
+.flv-card.wf-final { border-color: var(--good); }
+
+.flv-card.wf-run::after, .flv-card.run::after,
+.flv-card.wf-final::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 1;
+}
+.flv-card.wf-run::after, .flv-card.run::after { box-shadow: 0 0 0 3px var(--accent-soft); animation: flv-pulse-ring 1.8s ease-in-out infinite; }
+.flv-card.wf-final::after { box-shadow: 0 0 0 3px var(--accent-soft); animation: flv-pulse-ring 2.6s ease-in-out infinite; }
+
+@keyframes flv-pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+@keyframes flv-pulse-ring { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .flv-dot-run,
+  .flv-card.wf-run::after, .flv-card.run::after,
+  .flv-card.wf-final::after { animation: none; opacity: .7; }
+}
+
+/* ---- connectors ---------------------------------------------------------- */
+.flv-connector { display: flex; align-items: center; justify-content: center; height: 26px; }
+.flv-connector-line { width: 2px; height: 26px; background: var(--line-strong); }
+
+.flv-fan { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 4px 0; height: auto; }
+.flv-fan-stem { width: 2px; height: 8px; background: var(--line-strong); display: block; }
+.flv-fan-line { display: block; width: 56%; max-width: 520px; height: 2px; background: var(--line); }
+.flv-fan-stubs { display: flex; width: 56%; max-width: 520px; justify-content: space-between; }
+.flv-fan-stub { width: 2px; height: 8px; background: var(--line); display: block; }
+
+/* ---- junction strip (fork / converge) -------------------------------------- */
+.flv-junction { position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; margin: 6px auto; padding: 8px 18px; max-width: 360px; border: 1px dashed var(--line); border-radius: 999px; background: var(--surface-2); color: var(--ink-3); }
+.flv-junction::before, .flv-junction::after { content: ''; position: absolute; left: 50%; width: 2px; height: 10px; background: var(--line-strong); transform: translateX(-50%); }
+.flv-junction::before { top: -10px; }
+.flv-junction::after { bottom: -10px; }
+.flv-junction-icon { display: flex; align-items: center; justify-content: center; }
+.flv-junction-icon .i svg, .flv-junction-icon svg { width: 14px; height: 14px; display: block; }
+.flv-junction-label { font: 600 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .04em; }
+
+/* ---- add-agent ghost button ------------------------------------------------ */
+.flv-add-wrap { display: flex; justify-content: center; padding: 6px 0 18px; }
+.flv-add-btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 16px; border: 1px dashed var(--line-strong); border-radius: 999px; background: transparent; color: var(--ink-3); font: 600 12px/1 var(--sans); cursor: pointer; transition: border-color .15s ease, color .15s ease, background .15s ease; }
+.flv-add-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.flv-add-btn .i svg, .flv-add-btn svg { width: 12px; height: 12px; display: block; }
+</style>
+<script>
+(function () {
+
+  function esc(s) {
+    if (s === null || s === undefined) { s = ''; }
+    s = String(s);
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+
+  function icon(key, fallback) {
+    if (typeof window.svg === 'function') {
+      try {
+        var s = window.svg(key);
+        if (s) { return s; }
+      } catch (e) {}
+    }
+    return fallback || '';
+  }
+
+  function hyd(el) {
+    if (el && typeof window.hydrate === 'function') {
+      try { window.hydrate(el); } catch (e) {}
+    }
+  }
+
+  function safeVarName(v) {
+    if (typeof v === 'string' && /^--[a-zA-Z0-9-]+$/.test(v)) { return v; }
+    return '--accent';
+  }
+
+  var COL_ORDER = { LL: 0, L: 1, C: 2, R: 3, RR: 4 };
+  function colRank(c) {
+    if (c && COL_ORDER.hasOwnProperty(c)) { return COL_ORDER[c]; }
+    return 2;
+  }
+
+  function stableSortByCol(arr) {
+    var decorated = [];
+    var i;
+    for (i = 0; i < arr.length; i++) { decorated.push({ n: arr[i], i: i }); }
+    decorated.sort(function (a, b) {
+      var d = colRank(a.n.col) - colRank(b.n.col);
+      if (d !== 0) { return d; }
+      return a.i - b.i;
+    });
+    var out = [];
+    for (i = 0; i < decorated.length; i++) { out.push(decorated[i].n); }
+    return out;
+  }
+
+  function typeOf(n) {
+    return n && n.type ? String(n.type).toLowerCase() : '';
+  }
+
+  function isForkOrConverge(n) {
+    var t = typeOf(n);
+    return t === 'fork' || t === 'converge';
+  }
+
+  function isAgentNode(n) {
+    var t = typeOf(n);
+    return t === 'subagent' || t === 'agent';
+  }
+
+  function computeAddAfterIdx(rowDescs) {
+    var found = -1, widest = -1, k, m, rn, hasAgent;
+    for (k = 0; k < rowDescs.length; k++) {
+      rn = rowDescs[k].nodes;
+      hasAgent = false;
+      for (m = 0; m < rn.length; m++) {
+        if (isAgentNode(rn[m])) { hasAgent = true; break; }
+      }
+      if (hasAgent && rn.length > widest) { widest = rn.length; found = k; }
+    }
+    if (found === -1) { found = rowDescs.length - 2; }
+    else if (found === rowDescs.length - 1) { found = rowDescs.length - 2; }
+    if (found < 0) { found = rowDescs.length - 1; }
+    if (found < 0) { found = 0; }
+    return found;
+  }
+
+  function dotClass(status) {
+    var s = status ? String(status).toLowerCase() : 'queued';
+    if (s === 'done' || s === 'run' || s === 'review' || s === 'queued') { return 'flv-dot flv-dot-' + s; }
+    return 'flv-dot flv-dot-queued';
+  }
+
+  function connectorHtml(prevLanes, currLanes) {
+    if (prevLanes <= 1 && currLanes > 1) { return fanHtml(currLanes, 'out'); }
+    if (prevLanes > 1 && currLanes <= 1) { return fanHtml(prevLanes, 'in'); }
+    return '<div class="flv-connector"><div class="flv-connector-line"></div></div>';
+  }
+
+  function fanHtml(lanes, dir) {
+    var stubCount = lanes;
+    if (stubCount > 5) { stubCount = 5; }
+    if (stubCount < 2) { stubCount = 2; }
+    var stubs = '', i;
+    for (i = 0; i < stubCount; i++) { stubs += '<span class="flv-fan-stub"></span>'; }
+    if (dir === 'out') {
+      return '<div class="flv-connector flv-fan flv-fan-out">' +
+        '<span class="flv-fan-stem"></span>' +
+        '<span class="flv-fan-line"></span>' +
+        '<span class="flv-fan-stubs">' + stubs + '</span>' +
+        '</div>';
+    }
+    return '<div class="flv-connector flv-fan flv-fan-in">' +
+      '<span class="flv-fan-stubs">' + stubs + '</span>' +
+      '<span class="flv-fan-line"></span>' +
+      '<span class="flv-fan-stem"></span>' +
+      '</div>';
+  }
+
+  function junctionHtml(n) {
+    var isFork = typeOf(n) === 'fork';
+    var label = isFork ? 'fork &middot; parallel' : 'converge &middot; merge';
+    var ic = icon((n && n.icon) || (isFork ? 'split' : 'merge'));
+    var nid = n && n.id !== undefined && n.id !== null ? esc(n.id) : '';
+    return '<div class="flv-junction" data-flnode="' + nid + '">' +
+      '<span class="flv-junction-icon">' + ic + '</span>' +
+      '<span class="flv-junction-label">' + label + '</span>' +
+      '</div>';
+  }
+
+  function cardHtml(api, n, editable) {
+    var id = n && n.id !== undefined && n.id !== null ? String(n.id) : '';
+    var colorVar = safeVarName(typeof api.nodeColor === 'function' ? api.nodeColor(n) : '--accent');
+    var title = esc(n.title || 'Untitled');
+    var ic = icon(n.icon || 'cpu');
+    var sub = n.sub ? '<div class="flv-card-sub">' + esc(n.sub) + '</div>' : '';
+    var body = n.body ? '<div class="flv-card-body">' + n.body + '</div>' : '';
+    var isDash = function (v) { return !v || v === '&mdash;' || v === '-'; };
+    var modelHtml = !isDash(n.model) ? '<span class="flv-card-model">' + esc(n.model) + '</span>' : '';
+    var costHtml = !isDash(n.cost) ? '<span class="flv-card-cost">' + esc(n.cost) + '</span>' : '';
+    var metaHtml = (modelHtml || costHtml) ? '<div class="flv-card-meta">' + modelHtml + costHtml + '</div>' : '';
+    var actions = '<div class="flv-card-actions">' +
+      '<button type="button" class="flv-btn flv-btn-insp" data-flv-insp aria-label="Inspect" title="Inspect">' + icon('eye') + '</button>' +
+      (editable ? '<button type="button" class="flv-btn flv-btn-rm" data-flv-rm aria-label="Remove" title="Remove">' + icon('x') + '</button>' : '') +
+      '</div>';
+    return '<div class="flv-card" data-flnode="' + esc(id) + '" style="--nc:var(' + colorVar + ')" tabindex="0">' +
+      actions +
+      '<div class="flv-card-head">' +
+        '<span class="flv-card-icon">' + ic + '</span>' +
+        '<span class="flv-card-title" data-flv-role="title">' + title + '</span>' +
+        '<span class="' + dotClass(n.status) + '"></span>' +
+      '</div>' +
+      sub + body + metaHtml +
+      '</div>';
+  }
+
+  function elMatches(el, sel) {
+    var m = el.matches || el.msMatchesSelector || el.webkitMatchesSelector;
+    return m ? m.call(el, sel) : false;
+  }
+
+  function closestWithin(host, el, sel) {
+    while (el && el !== host) {
+      if (el.nodeType === 1 && elMatches(el, sel)) { return el; }
+      el = el.parentNode;
+    }
+    return null;
+  }
+
+  function startEdit(host, titleEl) {
+    if (titleEl.getAttribute('data-editing') === '1') { return; }
+    var cardEl = closestWithin(host, titleEl, '.flv-card');
+    if (!cardEl) { return; }
+    var id = cardEl.getAttribute('data-flnode');
+    var original = titleEl.textContent || '';
+    titleEl.setAttribute('data-editing', '1');
+    titleEl.style.display = 'none';
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'flv-edit';
+    input.value = original;
+    titleEl.parentNode.insertBefore(input, titleEl.nextSibling);
+    input.focus();
+    if (input.select) { input.select(); }
+
+    var done = false;
+    function cleanup() {
+      if (input.parentNode) { input.parentNode.removeChild(input); }
+      titleEl.style.display = '';
+      titleEl.removeAttribute('data-editing');
+    }
+    function commit() {
+      if (done) { return; }
+      if (input.getAttribute('data-committed') === '1') { return; }
+      input.setAttribute('data-committed', '1');
+      done = true;
+      var val = input.value.replace(/^\s+|\s+$/g, '');
+      var state = host._flvState;
+      if (val && val !== original && state && typeof state.api.renameNode === 'function') {
+        state.api.renameNode(id, val);
+      }
+      cleanup();
+    }
+    function cancel() {
+      if (done) { return; }
+      done = true;
+      input.setAttribute('data-committed', '1');
+      cleanup();
+    }
+    input.addEventListener('keydown', function (ev) {
+      var key = ev.key || '';
+      var code = ev.keyCode || 0;
+      if (key === 'Enter' || code === 13) {
+        ev.preventDefault();
+        commit();
+      } else if (key === 'Escape' || code === 27) {
+        ev.preventDefault();
+        cancel();
+      }
+    });
+    input.addEventListener('blur', function () { commit(); });
+    input.addEventListener('click', function (ev) { ev.stopPropagation(); });
+  }
+
+  function handleClick(host, e) {
+    var state = host._flvState;
+    if (!state) { return; }
+    var api = state.api;
+    var editable = state.editable;
+    var target = e.target;
+    if (!target) { return; }
+
+    var addBtn = closestWithin(host, target, '[data-flv-add]');
+    if (addBtn) {
+      e.stopPropagation();
+      if (editable && typeof api.addAgent === 'function') { api.addAgent(); }
+      return;
+    }
+    var inspBtn = closestWithin(host, target, '[data-flv-insp]');
+    if (inspBtn) {
+      e.stopPropagation();
+      var cardForInsp = closestWithin(host, inspBtn, '.flv-card');
+      var idInsp = cardForInsp ? cardForInsp.getAttribute('data-flnode') : '';
+      if (idInsp && typeof api.openNode === 'function') { api.openNode(idInsp); }
+      return;
+    }
+    var rmBtn = closestWithin(host, target, '[data-flv-rm]');
+    if (rmBtn) {
+      e.stopPropagation();
+      if (!editable) { return; }
+      var cardForRm = closestWithin(host, rmBtn, '.flv-card');
+      var idRm = cardForRm ? cardForRm.getAttribute('data-flnode') : '';
+      if (idRm && typeof api.removeNode === 'function') { api.removeNode(idRm); }
+      return;
+    }
+    var titleEl = closestWithin(host, target, '[data-flv-role="title"]');
+    if (titleEl && editable) {
+      e.stopPropagation();
+      startEdit(host, titleEl);
+      return;
+    }
+    var cardEl = closestWithin(host, target, '.flv-card');
+    if (cardEl) {
+      var tag = target.tagName ? target.tagName.toLowerCase() : '';
+      if (tag === 'input' || tag === 'button') { return; }
+      var nid = cardEl.getAttribute('data-flnode');
+      if (nid && typeof api.openNode === 'function') { api.openNode(nid); }
+    }
+  }
+
+  function bindHost(host, api, editable) {
+    host._flvState = { api: api, editable: editable };
+    if (!host._flvBound) {
+      host._flvBound = true;
+      host.addEventListener('click', function (e) { handleClick(host, e); });
+    }
+  }
+
+  function buildFlowView(host, api) {
+    if (!host) { return; }
+    api = api || {};
+    var graph = api.graph || {};
+    var nodes = (graph && graph.nodes) || [];
+    var editable = !!api.editable;
+    var title = api.title ? String(api.title) : 'Untitled Fleet';
+
+    if (!nodes || !nodes.length) {
+      host.innerHTML = '<div class="flv-root"><div class="flv-empty">' +
+        icon('flow', icon('git-branch')) +
+        '<div class="flv-empty-title">No flow yet</div>' +
+        '<div class="flv-empty-sub">This fleet has no nodes to show yet. Add a prompt to get started.</div>' +
+        '</div></div>';
+      bindHost(host, api, editable);
+      hyd(host);
+      return;
+    }
+
+    var rowsMap = {};
+    var rowKeys = [];
+    var i, n, r;
+    for (i = 0; i < nodes.length; i++) {
+      n = nodes[i];
+      r = (n && typeof n.row === 'number') ? n.row : 0;
+      if (!rowsMap.hasOwnProperty(r)) { rowsMap[r] = []; rowKeys.push(r); }
+      rowsMap[r].push(n);
+    }
+    rowKeys.sort(function (a, b) { return a - b; });
+
+    var rowDescs = [];
+    for (i = 0; i < rowKeys.length; i++) {
+      var sorted = stableSortByCol(rowsMap[rowKeys[i]]);
+      var junction = sorted.length === 1 && isForkOrConverge(sorted[0]);
+      rowDescs.push({ nodes: sorted, isJunction: junction, lanes: junction ? 1 : sorted.length });
+    }
+
+    var addAfterIdx = computeAddAfterIdx(rowDescs);
+
+    var parts = [];
+    for (i = 0; i < rowDescs.length; i++) {
+      if (i > 0) { parts.push(connectorHtml(rowDescs[i - 1].lanes, rowDescs[i].lanes)); }
+      if (rowDescs[i].isJunction) {
+        parts.push(junctionHtml(rowDescs[i].nodes[0]));
+      } else {
+        var cardsArr = [];
+        for (var m = 0; m < rowDescs[i].nodes.length; m++) {
+          cardsArr.push(cardHtml(api, rowDescs[i].nodes[m], editable));
+        }
+        parts.push('<div class="flv-row">' + cardsArr.join('') + '</div>');
+      }
+      if (editable && i === addAfterIdx) {
+        parts.push('<div class="flv-add-wrap"><button type="button" class="flv-add-btn" data-flv-add>' + icon('plus', '+') + '<span>+ parallel agent</span></button></div>');
+      }
+    }
+
+    var headHtml = '<div class="flv-head">' +
+      '<div class="flv-head-left">' +
+        '<div class="flv-head-title">' + esc(title) + '</div>' +
+        '<div class="flv-head-meta">' + nodes.length + ' node' + (nodes.length === 1 ? '' : 's') + '</div>' +
+      '</div>' +
+      '<div class="flv-head-hint">click any card to open it &middot; press Run when ready</div>' +
+      '</div>';
+
+    host.innerHTML = '<div class="flv-root' + (editable ? ' flv-editable' : '') + '"><div class="flv-canvas">' + headHtml + parts.join('') + '</div></div>';
+
+    bindHost(host, api, editable);
+    hyd(host);
+  }
+
+  window.buildFlowView = buildFlowView;
 })();
 </script>
 <!-- ==SCRIPT-MARK== -->

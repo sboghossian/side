@@ -39,7 +39,7 @@ Type what you want — a website migration, an outbound campaign, a deck. Or sta
 
 ### 🎨 A canvas, not a black box
 
-Every agent is a node you can open, reorder, pause, or re-run — colour-coded by what it does. Prompt, brain, tools, reasoning, orchestrator, gates. A live minimap tracks the whole run.
+Two projections of the same fleet: **Flow** (default) — a fast, structured vertical view with side-by-side lanes, inline renaming, and no zoom to fight — and **Map**, the full 2D canvas with pan, zoom and minimap for the spatial view. One toggle switches them; runs animate in whichever you're in.
 
 <img src="assets/02-canvas.png" alt="The Side canvas" width="920">
 
@@ -140,6 +140,7 @@ Your key lives in your browser's local storage and is sent to exactly one place:
 - [x] **Real artifacts on disk** — the `side` daemon writes shipped results under `~/Side/`
 - [x] **Real mode** — with a key, Side is *your* workspace: your name, your agents, your runs and spend, persisted across launches. The demo data only exists in demo mode
 - [x] **The decision tree** — a user-configurable global pipeline (recall → classify → route → gate policy) that governs how every fleet is composed, in demo and real runs alike
+- [x] **Flow view** — the canvas's structured default projection: document-fast, lanes side-by-side, edit inline; the 2D Map stays one toggle away
 - [ ] Real connectors: GitHub, Vercel, Linear, Gmail, PostHog
 - [ ] Skills: export/import a fleet as a shareable one-click Skill
 - [ ] Side World: public profiles + leaderboard
