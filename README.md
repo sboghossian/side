@@ -1,25 +1,25 @@
 <div align="center">
 
-# 🟠 Side
-
-**Your AI sidekick. One prompt in, a shipped result out — and you watch every move.**
+<img src="assets/banner.png" alt="Side — your AI sidekick" width="1000">
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-orange.svg)](LICENSE)
 [![Single file](https://img.shields.io/badge/app-one%20HTML%20file-blueviolet.svg)](app/index.html)
 [![Local first](https://img.shields.io/badge/runs-100%25%20on%20your%20machine-1C9E6B.svg)](#under-the-hood)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-FF5CA8.svg)](CONTRIBUTING.md)
 
-```sh
-curl -fsSL sboghossian.github.io/side/install.sh | sh
-```
-
-*One command. Zero dependencies. Nothing leaves your computer.*
-
 **[▶ Try it in your browser right now](https://sboghossian.github.io/side/app/)** — no install needed.
 
-<img src="assets/02-canvas.png" alt="A fleet of AI agents working on the Side canvas" width="920">
-
 </div>
+
+## Up and running in three steps
+
+| | | |
+|---|---|---|
+| **1 · Install** | `curl -fsSL sboghossian.github.io/side/install.sh \| sh` | one command, zero dependencies |
+| **2 · Open** | `side` | a desktop window opens on `localhost:4600` — already yours |
+| **3 · Plug in** | paste **any model key** | ~30 seconds; or skip it and explore the demo |
+
+Nothing leaves your computer. Your key lives in your browser and talks to exactly one place: your model's API.
 
 ---
 
@@ -83,9 +83,23 @@ Every prompt flows through a global pipeline before a fleet is built: check the 
 
 ### 🚢 Every agent is a canvas
 
-Your whole fleet at a glance — running, gated, done — each with a live thumbnail of its graph. Some public on your profile, most private on your machine.
+Your whole fleet at a glance — running, gated, done — each with a live thumbnail of its graph, plus an isometric **city map** where every agent is a building in its district. Some public on your profile, most private on your machine.
 
 <img src="assets/08-agents.png" alt="My agents" width="920">
+
+### 🧠 A brain in your sidebar
+
+Everything your fleet knows, and how it learns — one rail icon away. Point Side at a folder and **watch it discover**: an Obsidian-style force graph streams in node by node, clustered by topic. Next to it, the **nurture schedule** — the loops that feed your brain (daily digests, session archives, weekly retros), each with its last run and how many facts it added — plus your sources' health and a live feed of what was just learned. Agents ground on this instead of guessing.
+
+<img src="assets/09-brain.png" alt="The Side brain — a living knowledge graph with its nurture schedule" width="920">
+
+### 🎓 It teaches you as you use it
+
+Side assumes you've never touched agent tooling. A 60-second tour runs once after onboarding (replay it anytime with `?`). Every core concept — fleet, agent, gate, run, brain, decision tree — has a plain-language definition one `?` dot or `⌘K → Learn Side` away, and every empty screen explains the concept it's waiting to hold. You learn by watching; the product narrates.
+
+### 🔎 Search reaches the ecosystem
+
+Template search doesn't stop at what's installed: matching open-source components — MCP servers, skills, community fleets — appear under **"From the ecosystem"** with one-click install. A preview of where Side is going (see the roadmap: the v0.8 engine speaks MCP).
 
 ## How it works
 
@@ -114,7 +128,7 @@ Then:
 | `side reset` | relaunch with a fresh profile (replays onboarding) |
 | `side --version` | print version |
 
-Configuration takes about 30 seconds and asks exactly three things: your name, a few sentences of context your agents read before every run, and your Anthropic API key. Paste the key and Side is real; skip it and you get the safe demo sandbox.
+Configuration takes about 30 seconds and asks exactly three things: your name, a few sentences of context your agents read before every run, and **any model key** — Claude runs live today; GPT, Gemini and local (Ollama) plug into the v0.8 engine, and your pick is remembered. Paste a key and Side is real; skip it and you get the safe demo sandbox.
 
 **Uninstall:** `rm -rf ~/.side ~/.local/bin/side` — that's everything.
 
@@ -146,7 +160,10 @@ Your key lives in your browser's local storage and is sent to exactly one place:
 - [x] **The decision tree** — a user-configurable global pipeline (recall → classify → route → gate policy) that governs how every fleet is composed, in demo and real runs alike
 - [x] **Flow view** — the canvas's structured default projection: document-fast, lanes side-by-side, edit inline; the 2D Map stays one toggle away
 - [x] **The node designer** — click any node for a full workspace: live session chat (streams during runs, probe mid-run) + a freeform component canvas (notes, prompts, diagrams, tasks, artifacts, terminal, settings), persisted per node
-- [ ] Real connectors: GitHub, Vercel, Linear, Gmail, PostHog
+- [x] **The Brain** — a living knowledge graph in your sidebar: folder discovery, nurture loops, sources, learnings
+- [x] **Learn-as-you-go** — first-run tour, plain-language glossary (`⌘K → Learn Side`), educational empty states
+- [x] **Ecosystem search (preview)** — template search surfaces installable open-source components
+- [ ] **v0.8 — the engine grows up: Side becomes an MCP client.** Real tools (GitHub, Gmail, PostHog, Linear, a browser…) via the open Model Context Protocol instead of a thousand hand-built connectors, durable/resumable runs, and multi-provider keys (GPT, Gemini, local)
 - [ ] Skills: export/import a fleet as a shareable one-click Skill
 - [ ] Side World: public profiles + leaderboard
 
