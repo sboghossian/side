@@ -73,6 +73,10 @@ Never start from a blank page. Run a template, love the result, save the whole f
 
 <img src="assets/07-templates.png" alt="Template library" width="920">
 
+### 🌳 A decision tree you control
+
+Every prompt flows through a global pipeline before a fleet is built: check the Brain, classify the ask, route it down the right lane — code builds discover the codebase first, outbound hits a hard no-auto-send gate, research gets a cite-check. The whole tree is yours: toggle steps, edit lanes, add branches, change the keywords that route to them. Press `⌘K → Decision tree`.
+
 ### 🚢 Every agent is a canvas
 
 Your whole fleet at a glance — running, gated, done — each with a live thumbnail of its graph. Some public on your profile, most private on your machine.
@@ -135,6 +139,7 @@ Your key lives in your browser's local storage and is sent to exactly one place:
 - [x] **Real runs: bring-your-own-key engine** — browser-direct Anthropic calls, per-node model routing, parallel sub-agents
 - [x] **Real artifacts on disk** — the `side` daemon writes shipped results under `~/Side/`
 - [x] **Real mode** — with a key, Side is *your* workspace: your name, your agents, your runs and spend, persisted across launches. The demo data only exists in demo mode
+- [x] **The decision tree** — a user-configurable global pipeline (recall → classify → route → gate policy) that governs how every fleet is composed, in demo and real runs alike
 - [ ] Real connectors: GitHub, Vercel, Linear, Gmail, PostHog
 - [ ] Skills: export/import a fleet as a shareable one-click Skill
 - [ ] Side World: public profiles + leaderboard
