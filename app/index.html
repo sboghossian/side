@@ -3560,12 +3560,17 @@ function runPromptFlow(text){
     $('[data-pfnext]',host).addEventListener('click',function(){if(step<2){step++;render();}else{finish();}});
   }
   function finishWith(ftitle,subs){closePF();var slug='new:'+(nodeSeq++);GRAPHS[slug]=genGraph(text,subs);GRAPHTITLE[slug]=ftitle||(text.length>26?text.slice(0,24)+'\u2026':text);sideRegisterAgent(slug,text,subs?subs.length:3);curSlug=slug;navTo('canvas');Z=0.72;applyZoom();setTimeout(function(){toast('Built your fleet \u2014 press Run when ready');},400);}
-  function finishStatic(){finishWith(null,[{icon:'brain',title:'Recall'},{icon:'agent',title:'Build it'},{icon:'eye',title:'Review'},{icon:'shield',title:'Gate'}]);}
+  function finishStatic(){
+    var subs=null;
+    try{if(window.SidePipeline){subs=window.SidePipeline.subsFor(window.SidePipeline.classify(text));}}catch(e1){}
+    finishWith(null,subs||[{icon:'brain',title:'Recall'},{icon:'agent',title:'Build it'},{icon:'eye',title:'Review'},{icon:'shield',title:'Gate'}]);
+  }
   function finish(){
     if(sideEngineOn()&&window.SideEngine.plan){
       var stg=host.querySelector('.pf-stage');
       if(stg){stg.innerHTML='<div class="pf-planning"><span class="ct-spin"></span><b>The fleet architect is planning your run&hellip;</b><span style="font-size:.78rem;color:var(--ink-3)">a real Claude call &middot; your key &middot; a few seconds</span></div>';}
       var planGoal=text;try{var pb=(SIDE_PROFILE&&SIDE_PROFILE.bio)||'';if(pb)planGoal=text+'\n\nUSER CONTEXT (the requester; match their voice): '+pb.slice(0,300);}catch(e0){}
+      try{if(window.SidePipeline){var pd=window.SidePipeline.directive(text);if(pd)planGoal+='\n\n'+pd;}}catch(e00){}
       window.SideEngine.plan(planGoal,function(err,plan){
         if(err||!plan||!plan.subs||!plan.subs.length){finishStatic();return;}
         var OKIC={search:1,edit:1,agent:1,code:1,file:1,graph:1,mail:1,world:1,report:1,check:1};
@@ -4462,6 +4467,56 @@ function sideInboxReal(){
   if(!runs.length)return '<div class="dw-sec" style="text-align:center;padding:36px 16px"><div style="margin-bottom:10px;color:var(--ink-3)">'+svg('mail')+'</div><b>Nothing needs you yet</b><p class="dw-lead" style="margin-top:6px">Gates and results from your runs land here. Build a fleet on Home and press Run.</p></div>';
   return '<p class="dw-lead">Everything from your runs, in one place.</p><div class="dw-sec"><div class="dsh">'+svg('check')+' Shipped</div>'+runs.map(function(rk){return '<div class="conn-row"><span class="ci">'+svg('report')+'</span><span class="cn"><b>'+(GRAPHTITLE[rk]||rk)+'</b><p>approved &middot; $'+((LASTRUN[rk].totalCost||0)).toFixed(2)+' &middot; ~/Side/runs/</p></span></div>';}).join('')+'</div>';
 }
+function sidePipelineDefault(){
+  return {version:1,
+   pre:[
+    {id:'recall',t:'Check the Brain',d:'your profile, memory and past runs load first \u2014 agents never guess',ic:'brain',on:true},
+    {id:'classify',t:'Classify the ask',d:'what kind of work is this? route it down the right lane',ic:'fork',on:true}
+   ],
+   branches:[
+    {id:'code',t:'Code build',ic:'code',color:'--sky',match:['code','build','app','website','site','bug','fix','deploy','repo','api','migrate'],on:true,steps:[{t:'Discover the codebase',ic:'search',on:true},{t:'Plan the change',ic:'layers',on:true},{t:'Build it',ic:'code',on:true},{t:'Test + verify',ic:'check',on:true}],gate:{on:true,label:'Review before ship'}},
+    {id:'content',t:'Content + writing',ic:'edit',color:'--pink',match:['write','draft','post','blog','deck','copy','article','update'],on:true,steps:[{t:'Voice check',ic:'wave',on:true},{t:'Draft it',ic:'edit',on:true},{t:'Humanize',ic:'sparkle',on:true},{t:'Polish pass',ic:'eye',on:true}],gate:{on:true,label:'Review before publish'}},
+    {id:'research',t:'Research',ic:'search',color:'--violet',match:['research','compare','analyze','competitors','find','brief','study','landscape'],on:true,steps:[{t:'Multi-source sweep',ic:'world',on:true},{t:'Synthesize',ic:'layers',on:true},{t:'Cite-check',ic:'check',on:true}],gate:{on:false,label:'Optional review'}},
+    {id:'skill',t:'Skill build',ic:'grid',color:'--mint',match:['skill','template','automation','routine','workflow','portfolio'],on:true,steps:[{t:'Scaffold it',ic:'layers',on:true},{t:'Test on an example',ic:'check',on:true},{t:'Package + document',ic:'file',on:true}],gate:{on:true,label:'Publish gate'}},
+    {id:'outbound',t:'Outbound + sends',ic:'send',color:'--sun',match:['send','outreach','outbound','campaign','launch','announce','invite','email','emails'],on:true,steps:[{t:'Draft the batch',ic:'edit',on:true},{t:'Personalize each',ic:'user',on:true},{t:'Guardrail the caps',ic:'shield',on:true}],gate:{on:true,label:'HARD gate \u2014 never auto-send'}},
+    {id:'default',t:'Everything else',ic:'agent',color:'--accent',match:[],on:true,steps:[{t:'Recall',ic:'brain',on:true},{t:'Build it',ic:'agent',on:true},{t:'Review',ic:'eye',on:true}],gate:{on:true,label:'Your yes'}}
+   ],
+   post:[
+    {id:'budget',t:'Route models by weight',d:'Opus for the hard parts, Sonnet builds, Haiku for the cheap steps',ic:'coin',on:true},
+    {id:'report',t:'Shipped report',d:'what shipped, what it cost, what the fleet learned',ic:'report',on:true}
+   ]};
+}
+var SIDE_PIPELINE=null;
+window.SidePipeline={
+  get:function(){if(!SIDE_PIPELINE){try{var raw=localStorage.getItem('side_pipeline');if(raw)SIDE_PIPELINE=JSON.parse(raw);}catch(e){}if(!SIDE_PIPELINE||!SIDE_PIPELINE.branches)SIDE_PIPELINE=sidePipelineDefault();}return SIDE_PIPELINE;},
+  save:function(cfg){if(cfg)SIDE_PIPELINE=cfg;try{localStorage.setItem('side_pipeline',JSON.stringify(SIDE_PIPELINE));}catch(e){}},
+  reset:function(){SIDE_PIPELINE=sidePipelineDefault();try{localStorage.setItem('side_pipeline',JSON.stringify(SIDE_PIPELINE));}catch(e){}return SIDE_PIPELINE;},
+  classify:function(text){
+    var cfg=window.SidePipeline.get();var s=(''+(text||'')).toLowerCase();
+    var best=null,bestScore=0,i,j;
+    for(i=0;i<cfg.branches.length;i++){var b=cfg.branches[i];if(!b.on)continue;var sc=0;
+      for(j=0;j<(b.match||[]).length;j++){if(b.match[j]&&s.indexOf(b.match[j])>=0)sc++;}
+      if(sc>0&&sc>=bestScore){best=b;bestScore=sc;}}
+    if(!best){for(i=0;i<cfg.branches.length;i++){if(cfg.branches[i].id==='default'&&cfg.branches[i].on){best=cfg.branches[i];break;}}}
+    if(!best){for(i=0;i<cfg.branches.length;i++){if(cfg.branches[i].on){best=cfg.branches[i];break;}}}
+    return best;
+  },
+  subsFor:function(branch){
+    if(!branch)return null;
+    var subs=[],st=branch.steps||[],i;
+    for(i=0;i<st.length;i++){if(st[i].on)subs.push({icon:st[i].ic||'agent',title:st[i].t,sub:(branch.t||'').toLowerCase()});}
+    if(!subs.length)subs.push({icon:'agent',title:'Do the work'});
+    if(branch.gate&&branch.gate.on)subs.push({icon:'shield',title:'Gate',sub:(branch.gate.label||'your yes').replace(/&[a-z]+;/g,' ')});
+    return subs;
+  },
+  directive:function(text){
+    var cfg=window.SidePipeline.get();var b=window.SidePipeline.classify(text);if(!b)return '';
+    var pre=[],steps=[],i;
+    for(i=0;i<cfg.pre.length;i++){if(cfg.pre[i].on)pre.push(cfg.pre[i].t);}
+    var st=b.steps||[];for(i=0;i<st.length;i++){if(st[i].on)steps.push(st[i].t);}
+    return 'GLOBAL PIPELINE (user-configured; the fleet MUST follow it): first '+pre.join(', then ')+'. This request is classified as "'+b.t+'". Compose the sub-agents to cover these workstreams in order: '+steps.join(' -> ')+'. '+((b.gate&&b.gate.on)?('End with an approval gate (set "gate":true, "gateLabel":"'+(b.gate.label||'your yes').replace(/&[a-z]+;/g,'-')+'").'):'No hard gate needed (set "gate":false).');
+  }
+};
 sideStateRestore();
 function sideEngineOn(){return !!(window.SideEngine&&window.SideEngine.hasKey&&window.SideEngine.hasKey());}
 function sideDaemonSave(relpath,content,cb){
@@ -4487,13 +4542,15 @@ function sideKeySectionHTML(){
     '<p class="dw-lead" style="margin:8px 0 10px">Bring your Anthropic API key to run fleets for real. Stored only in this browser, sent only to api.anthropic.com.</p>'+
     '<input class="inp" id="eng-key" type="password" placeholder="'+(on?'key saved \u2014 paste to replace':'sk-ant-...')+'" spellcheck="false" autocomplete="off" style="width:100%">'+
     '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-primary btn-sm" id="eng-save">Save key</button><button class="btn btn-soft btn-sm" id="eng-test">Test</button>'+(on?'<button class="btn btn-soft btn-sm" id="eng-clear">Remove</button>':'')+'</div>'+
-    '<div class="mono" id="eng-status" style="font-size:.68rem;color:var(--ink-3);margin-top:8px">'+(on?'Engine live: plans and runs use real Claude calls.':'Without a key, everything runs as a safe simulation.')+'</div></div>';
+    '<div class="mono" id="eng-status" style="font-size:.68rem;color:var(--ink-3);margin-top:8px">'+(on?'Engine live: plans and runs use real Claude calls.':'Without a key, everything runs as a safe simulation.')+'</div>'+
+    '<button class="wd-open" id="eng-pipeline" style="margin-top:12px">'+svg('fork')+' Decision tree &mdash; how every prompt flows</button></div>';
 }
 document.addEventListener('click',function(e){
   var t=e.target;if(!t||!t.id)return;
   var st=$('#eng-status');var inp=$('#eng-key');
   if(t.id==='eng-save'){var v=(inp&&inp.value||'').trim();if(!v){if(st)st.textContent='Paste a key first.';return;}if(window.SideEngine){window.SideEngine.setKey(v);}if(st)st.textContent='Key saved on this machine. The engine is live.';toast('Real engine on');if(typeof sideApplyMode==='function')sideApplyMode();if(typeof curUtab!=='undefined'&&curUtab==='settings')setUtab('settings');}
   else if(t.id==='eng-test'){if(!sideEngineOn()){if(st)st.textContent='Save a key first.';return;}if(st)st.textContent='Testing\u2026';window.SideEngine.selfTest(function(err,ms){if(st)st.textContent=err?('Test failed: '+err.message):('Live \u2014 round trip '+ms+'ms.');});}
+  else if(t.id==='eng-pipeline'){openUtil('pipeline');}
   else if(t.id==='eng-clear'){if(window.SideEngine)window.SideEngine.clearKey();toast('Key removed \u2014 back to demo mode');if(typeof sideApplyMode==='function')sideApplyMode();if(typeof curUtab!=='undefined'&&curUtab==='settings')setUtab('settings');}
 });
 /* synthesize a payoff report for any freshly-run canvas that has no authored report */
@@ -4577,6 +4634,7 @@ var UTAB={
   reports:{ic:'report',t:'Reports',wide:false,full:null},
   subfleet:{ic:'fleet',t:'Sub-fleets',wide:false,full:null},
   brain:{ic:'brain',t:'Brain',wide:true,full:null},
+  pipeline:{ic:'fork',t:'Decision tree',wide:true,full:null},
   guardrails:{ic:'shield',t:'Guardrails',wide:false,full:null},
   cost:{ic:'coin',t:'Cost',wide:false,full:null},
   routines:{ic:'clock',t:'Routines',wide:false,full:null},
@@ -4601,6 +4659,7 @@ var RAIL_DEF={
  account:{ic:'user',t:'Account',d:'settings'},
  templates:{ic:'grid',t:'Templates',d:'templates'},
  world:{ic:'world',t:'Claude World',d:'world'},
+ pipeline:{ic:'fork',t:'Decision tree',d:'pipeline'},
  components:{ic:'plus',t:'Add a component',d:'components'},
  quick:{ic:'sliders',t:'Quick edits',d:'quick'},
  terminal:{ic:'terminal',t:'Terminal',d:'terminal'},
@@ -4621,10 +4680,10 @@ var RAIL_DEF={
  checklist:{ic:'check',t:'Get started',d:'checklist'}
 };
 var RAIL_LEVELS={
- home2:['inbox','search','world','account','templates','checklist'],
- canvas:['components','quick','terminal','files','browser','agentset'],
+ home2:['inbox','search','pipeline','world','account','templates','checklist'],
+ canvas:['components','quick','terminal','files','browser','pipeline','agentset'],
  agents:['inbox','subfleet','search'],
- fleet:['tasks','cost','routines','machines','brain','guardrails','recommended','addwidget'],
+ fleet:['tasks','cost','routines','machines','brain','pipeline','guardrails','recommended','addwidget'],
  world:['inbox','search','account'],
  profile:['appearance','templates','search','pubprofile','checklist']
 };
@@ -4689,6 +4748,9 @@ function drawerComponents(){
 function drawerSubfleet(){
   var envs=[['@HAQQ','5 agents &middot; shared brain','var(--accent)',['Website Migration','Outbound Infrastructure','PLG Ritual']],['@personal','2 agents','var(--good)',['stephane.bio','Travel Planner']],['@legal','3 agents','var(--warn)',['Clausebox','Divorce CT','Cite-guard']]];
   return '<p class="dw-lead">Folders with a shared brain, settings and members. Every agent lives in one.</p>'+envs.map(function(e){return '<div class="dw-sec"><div class="dsh">'+svg('fleet')+' '+e[0]+' <span class="dsh-r">'+e[1]+'</span></div>'+e[3].map(function(a){return '<div class="conn-row" data-fopen="Opening '+a+'"><span class="ci">'+svg('graph')+'</span><span class="cn"><b>'+a+'</b></span><span class="d" style="background:'+e[2]+';width:8px;height:8px;border-radius:50%"></span></div>';}).join('')+'</div>';}).join('');
+}
+function drawerPipeline(){
+  return '<div id="pipeline-studio-mount" style="min-height:calc(100vh - 150px)"></div>';
 }
 function drawerBrain(){
   /* the full editable brain (stephane_claude) lives right here in the sidebar */
@@ -4889,7 +4951,7 @@ function setUtab(tab){
   $('#util-title').innerHTML='<span class="i" data-ic="'+cfg.ic+'"></span> '+cfg.t+(cfg.ub?' <span class="ub">'+cfg.ub+'</span>':'');hydrate($('#util-title'));
   var full=$('#util-full');if(full)full.style.display='none';/* a sidebar stays a sidebar: no "open in full" */
   var body=$('#util-body');
-  body.innerHTML=tab==='search'?drawerSearch():tab==='inbox'?drawerInbox():tab==='tasks'?drawerTasks():tab==='terminal'?drawerTerminal():tab==='files'?drawerFiles():tab==='components'?drawerComponents():tab==='addwidget'?drawerAddWidget():tab==='quick'?drawerQuick():tab==='reports'?drawerReports():tab==='subfleet'?drawerSubfleet():tab==='brain'?drawerBrain():tab==='guardrails'?drawerGuardrails():tab==='recommended'?drawerRecommended():tab==='appearance'?drawerAppearance():tab==='checklist'?drawerChecklist():tab==='settings'?drawerSettings():tab==='profile'?drawerProfile():tab==='templates'?drawerTemplates():tab==='world'?drawerWorld():tab==='browser'?drawerBrowser():tab==='cost'?drawerCost():tab==='routines'?drawerRoutines():tab==='machines'?drawerMachines():drawerSettings();
+  body.innerHTML=tab==='search'?drawerSearch():tab==='inbox'?drawerInbox():tab==='tasks'?drawerTasks():tab==='terminal'?drawerTerminal():tab==='files'?drawerFiles():tab==='components'?drawerComponents():tab==='addwidget'?drawerAddWidget():tab==='quick'?drawerQuick():tab==='reports'?drawerReports():tab==='subfleet'?drawerSubfleet():tab==='brain'?drawerBrain():tab==='pipeline'?drawerPipeline():tab==='guardrails'?drawerGuardrails():tab==='recommended'?drawerRecommended():tab==='appearance'?drawerAppearance():tab==='checklist'?drawerChecklist():tab==='settings'?drawerSettings():tab==='profile'?drawerProfile():tab==='templates'?drawerTemplates():tab==='world'?drawerWorld():tab==='browser'?drawerBrowser():tab==='cost'?drawerCost():tab==='routines'?drawerRoutines():tab==='machines'?drawerMachines():drawerSettings();
   hydrate(body);wireDrawer(tab);
 }
 function wireDrawer(tab){
@@ -4953,6 +5015,8 @@ function wireDrawer(tab){
     var brf=$('#dwbrowse-rf',body);if(brf)brf.addEventListener('click',function(){var u=$('#dwbrowse-url',body);toast('Reloaded '+((u&&u.value)||'the page'));});
     var bsw=$('#dwbrowse-auto',body);if(bsw)bsw.addEventListener('click',function(){bsw.classList.toggle('on');toast(bsw.classList.contains('on')?'Agent will browse for you':'You have the wheel');});
     $$('[data-bract]',body).forEach(function(b){b.addEventListener('click',function(){toast(b.getAttribute('data-bract'));});});
+  } else if(tab==='pipeline'){
+    var pm=$('#pipeline-studio-mount',body);if(pm&&window.buildPipelineStudio){window.buildPipelineStudio(pm);}
   } else if(tab==='brain'){
     var bm=$('#brain-studio-mount',body);if(bm&&window.buildBrainStudio){window.buildBrainStudio(bm);}
     else{$$('.sw',body).forEach(function(sw){sw.addEventListener('click',function(){sw.classList.toggle('on');});});}
@@ -5187,7 +5251,7 @@ function openEnvCreate(){
 var cmdkIdx=0,cmdkFlat=[];
 function cmdkGroups(){
   var pages=[['home2','flame','Home'],['fleet','dashboard','Fleet dashboard'],['agents','fleet','My agents']];
-  var panels=[['inbox','mail','Inbox'],['templates','grid','Templates'],['cost','coin','Cost & budget'],['routines','clock','Routines'],['machines','server','Machines & health'],['brain','brain','Brain / knowledge'],['guardrails','shield','Guardrails'],['reports','report','Reports'],['world','world','Claude World'],['appearance','palette','Appearance']];
+  var panels=[['inbox','mail','Inbox'],['templates','grid','Templates'],['cost','coin','Cost & budget'],['routines','clock','Routines'],['machines','server','Machines & health'],['brain','brain','Brain / knowledge'],['pipeline','fork','Decision tree'],['guardrails','shield','Guardrails'],['reports','report','Reports'],['world','world','Claude World'],['appearance','palette','Appearance']];
   var accents=(typeof ACCENTS!=='undefined'?ACCENTS:[]);
   return [
     {g:'Go to',items:pages.map(function(v){return {ic:v[1],t:v[2],s:'page',run:function(){navTo(v[0]);}};})},
@@ -13795,5 +13859,542 @@ img.fbshot{display:block;width:100%;height:auto;background:var(--surface-2)}
 
 })();
 
+</script>
+<style>
+/* pipeline studio (decision tree) */
+.pst-root {
+  font-family: var(--sans);
+  color: var(--ink);
+  padding: 22px 22px 26px 22px;
+  box-sizing: border-box;
+  width: 100%;
+}
+.pst-root *, .pst-root *:before, .pst-root *:after { box-sizing: border-box; }
+
+.pst-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:22px; }
+.pst-header-text { flex:1 1 auto; min-width:0; }
+.pst-title-main { font-size:19px; font-weight:600; color:var(--ink); letter-spacing:-0.01em; }
+.pst-sub { margin-top:6px; font-size:13px; line-height:1.5; color:var(--ink-3); max-width:46em; }
+
+.pst-btn { font-family: var(--sans); font-size:12.5px; font-weight:600; border-radius:9px; padding:8px 14px; cursor:pointer; white-space:nowrap; border:1px solid var(--line); background:var(--surface); color:var(--ink-2); transition:border-color .15s, color .15s, background .15s; }
+.pst-btn:hover { border-color:var(--line-strong); color:var(--ink); }
+.pst-btn-ghost { background:transparent; }
+.pst-pending { border-color:var(--sun); color:var(--sun); }
+
+.pst-tree { display:flex; flex-direction:column; }
+.pst-stack { display:flex; flex-direction:column; align-items:stretch; }
+
+.pst-connector { width:2px; height:18px; background:var(--line-strong); margin:0 auto; }
+.pst-branch-steps .pst-connector { height:10px; }
+
+.pst-step { display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--line); border-radius:14px; background:var(--surface); box-shadow: var(--shadow-sm); transition: border-color .15s, opacity .15s; }
+.pst-step:hover { border-color:var(--line-strong); }
+.pst-step.pst-off { opacity:.55; border-style:dashed; }
+
+.pst-step-ic { width:34px; height:34px; border-radius:10px; background:var(--accent-soft); color:var(--accent); display:flex; align-items:center; justify-content:center; flex:0 0 auto; }
+.pst-step-ic .i svg { width:17px; height:17px; }
+
+.pst-step-body { flex:1 1 auto; min-width:0; }
+.pst-step-title { display:inline-block; font-size:14px; font-weight:600; color:var(--ink); cursor:text; border-radius:5px; padding:1px 3px; margin:-1px -3px; }
+.pst-step-title:hover { background:var(--surface-2); }
+.pst-step-desc { margin-top:2px; font-size:12px; color:var(--ink-3); }
+
+.pst-fan { position:relative; height:34px; }
+.pst-fan-trunk { position:absolute; left:50%; top:0; width:2px; height:15px; background:var(--line-strong); transform:translateX(-50%); }
+.pst-fan-bar { position:absolute; left:6%; right:6%; top:15px; height:2px; background:var(--line-strong); }
+.pst-fan-ticks { position:absolute; left:6%; right:6%; top:17px; height:11px; background-image: repeating-linear-gradient(to right, var(--line-strong) 0, var(--line-strong) 2px, transparent 2px, transparent 42px); background-position: 18px 0; }
+
+.pst-lanes { display:flex; gap:14px; overflow-x:auto; padding:2px 2px 10px 2px; scrollbar-width:none; -ms-overflow-style:none; }
+.pst-lanes::-webkit-scrollbar { display:none; height:0; }
+
+.pst-lane { flex:0 0 auto; width:212px; min-width:212px; display:flex; flex-direction:column; border:1px solid var(--line); border-radius:14px; background:var(--surface); overflow:hidden; transition:border-color .15s, opacity .15s; }
+.pst-lane:hover { border-color:var(--line-strong); }
+.pst-lane.pst-off { opacity:.55; }
+
+.pst-lane-header { padding:12px 12px 10px 12px; background: color-mix(in srgb, var(--bc) 10%, var(--surface)); border-bottom:1px solid color-mix(in srgb, var(--bc) 28%, var(--line)); }
+.pst-lane-head-top { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.pst-lane-head-top .i svg { width:16px; height:16px; color:var(--bc); flex:0 0 auto; }
+.pst-lane-title { display:inline-block; font-size:13.5px; font-weight:700; color:var(--ink); flex:1 1 auto; min-width:0; cursor:text; border-radius:5px; padding:1px 3px; margin:-1px -3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:120px; vertical-align:middle; }
+.pst-lane-title:hover { background:var(--surface-2); }
+.pst-lane-remove { display:flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:6px; color:var(--ink-3); cursor:pointer; opacity:0; transition:opacity .15s, background .15s; flex:0 0 auto; margin-left:auto; }
+.pst-lane-remove .i svg { width:11px; height:11px; }
+.pst-lane-header:hover .pst-lane-remove { opacity:1; }
+.pst-lane-remove:hover { background:var(--surface-3); color:var(--ink); }
+
+.pst-match-label { padding:10px 12px 4px 12px; font-family:var(--mono); font-size:10.5px; letter-spacing:.03em; text-transform:uppercase; color:var(--ink-3); }
+.pst-match { display:flex; flex-wrap:wrap; gap:6px; padding:0 12px 12px 12px; }
+.pst-chip { display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-family:var(--mono); color:var(--ink-2); background:var(--surface-2); border:1px solid var(--line); border-radius:100px; padding:3px 6px 3px 9px; }
+.pst-chip-x { display:flex; align-items:center; justify-content:center; width:13px; height:13px; border-radius:50%; cursor:pointer; color:var(--ink-3); }
+.pst-chip-x:hover { background:var(--surface-3); color:var(--ink); }
+.pst-chip-x .i svg { width:9px; height:9px; }
+.pst-kw-input { flex:1 1 60px; min-width:60px; border:1px dashed var(--line); border-radius:100px; background:transparent; font-size:11.5px; font-family:var(--mono); color:var(--ink); padding:3px 9px; outline:none; }
+.pst-kw-input:focus { border-color:var(--accent); border-style:solid; }
+
+.pst-branch-steps { display:flex; flex-direction:column; padding:0 12px; }
+.pst-bstep { position:relative; display:flex; align-items:center; gap:8px; padding:8px 9px; border:1px solid var(--line); border-radius:11px; background:var(--paper); }
+.pst-bstep.pst-off { opacity:.55; border-style:dashed; }
+.pst-bstep .i svg { width:14px; height:14px; color:var(--ink-3); flex:0 0 auto; }
+.pst-bstep-title { display:inline-block; flex:1 1 auto; min-width:0; font-size:12.5px; font-weight:600; color:var(--ink); cursor:text; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pst-bstep-x { display:flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:6px; color:var(--ink-3); cursor:pointer; opacity:0; transition:opacity .15s; flex:0 0 auto; }
+.pst-bstep-x .i svg { width:9px; height:9px; }
+.pst-bstep:hover .pst-bstep-x { opacity:1; }
+.pst-bstep-x:hover { background:var(--surface-3); color:var(--ink); }
+
+.pst-addstep-btn { display:flex; align-items:center; justify-content:center; gap:5px; margin:8px 12px 12px 12px; padding:7px 0; border:1.5px dashed var(--line); border-radius:10px; background:transparent; color:var(--ink-3); font-size:11.5px; font-weight:600; font-family:var(--sans); cursor:pointer; transition:border-color .15s, color .15s; }
+.pst-addstep-btn:hover { border-color:var(--accent); color:var(--accent); }
+.pst-addstep-btn .i svg { width:11px; height:11px; }
+
+.pst-gate { display:flex; align-items:center; gap:8px; margin:0 12px 12px 12px; padding:8px 10px; border-radius:10px; border:1px solid var(--line); }
+.pst-gate.pst-on { background: color-mix(in srgb, var(--sun) 14%, var(--surface)); border-color: color-mix(in srgb, var(--sun) 40%, var(--line)); }
+.pst-gate.pst-off { border-style:dashed; opacity:.65; }
+.pst-gate .i svg { width:14px; height:14px; color:var(--sun); flex:0 0 auto; }
+.pst-gate-label { display:inline-block; flex:1 1 auto; min-width:0; font-size:11.5px; font-weight:600; color:var(--ink); cursor:text; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+.pst-addbranch { flex:0 0 auto; width:150px; min-width:150px; display:flex; align-items:center; justify-content:center; border:1.5px dashed var(--line-strong); border-radius:14px; cursor:pointer; color:var(--ink-3); transition:border-color .15s, color .15s; min-height:120px; }
+.pst-addbranch:hover { border-color:var(--accent); color:var(--accent); }
+.pst-addbranch-inner { display:flex; flex-direction:column; align-items:center; gap:6px; font-size:12px; font-weight:600; }
+.pst-addbranch-inner .i svg { width:16px; height:16px; }
+
+.pst-sw { width:34px; height:20px; border-radius:100px; background:var(--line); position:relative; cursor:pointer; flex:0 0 auto; transition:background .15s; }
+.pst-sw:after { content:""; position:absolute; width:16px; height:16px; border-radius:50%; background:#fff; top:2px; left:2px; transition:.15s; box-shadow: var(--shadow-sm); }
+.pst-sw.on { background:var(--good); }
+.pst-sw.on:after { left:16px; }
+
+.pst-edit { font-family:inherit; font-size:inherit; font-weight:inherit; color:var(--ink); background:var(--surface); border:1px solid var(--accent); border-radius:6px; padding:1px 5px; outline:none; width:100%; }
+
+.pst-foot { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:22px; padding-top:14px; border-top:1px solid var(--line); flex-wrap:wrap; }
+.pst-foot-note { font-family:var(--mono); font-size:11.5px; color:var(--ink-3); }
+.pst-badge { font-family:var(--mono); font-size:11.5px; color:var(--ink-2); background:var(--surface-2); border:1px solid var(--line); border-radius:100px; padding:4px 11px; white-space:nowrap; }
+
+@media (max-width:760px) {
+  .pst-root { padding:16px; }
+  .pst-header { flex-direction:column; align-items:flex-start; }
+}
+</style>
+<script>
+(function () {
+
+  function buildPipelineStudio(mountEl) {
+    var cfg = window.SidePipeline.get();
+    var resetPending = false;
+    var resetTimer = null;
+
+    function findById(arr, id) {
+      var i;
+      for (i = 0; i < arr.length; i++) {
+        if (arr[i].id === id) { return arr[i]; }
+      }
+      return null;
+    }
+
+    function findBranch(bid) {
+      return findById(cfg.branches || [], bid);
+    }
+
+    function esc(s) {
+      if (s === undefined || s === null) { s = ''; }
+      s = String(s);
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function makeId(prefix) {
+      return prefix + '_' + String(Date.now()) + '_' + String(Math.floor(Math.random() * 1000));
+    }
+
+    function iconSpan(ic) {
+      return '<span class="i" data-ic="' + esc(ic || 'agent') + '"></span>';
+    }
+
+    function swHtml(path, on) {
+      return '<span class="pst-sw' + (on ? ' on' : '') + '" data-pst-role="toggle" data-path="' + esc(path) + '"></span>';
+    }
+
+    function titleHtml(path, text, cls) {
+      return '<span class="pst-title ' + (cls || '') + '" data-pst-role="title" data-path="' + esc(path) + '">' + esc(text) + '</span>';
+    }
+
+    function stepCard(kind, item) {
+      var path = kind + '|' + item.id;
+      var cardCls = 'pst-step' + (item.on ? '' : ' pst-off');
+      var out = '';
+      out += '<div class="' + cardCls + '">';
+      out += '<div class="pst-step-ic">' + iconSpan(item.ic) + '</div>';
+      out += '<div class="pst-step-body">';
+      out += titleHtml(path, item.t, 'pst-step-title');
+      if (item.d) { out += '<div class="pst-step-desc">' + esc(item.d) + '</div>'; }
+      out += '</div>';
+      out += swHtml(path, item.on);
+      out += '</div>';
+      return out;
+    }
+
+    function stackHtml(kind, items) {
+      var out = '';
+      var i;
+      for (i = 0; i < items.length; i++) {
+        if (i > 0) { out += '<div class="pst-connector"></div>'; }
+        out += stepCard(kind, items[i]);
+      }
+      return out;
+    }
+
+    function fanHtml() {
+      return '<div class="pst-fan"><div class="pst-fan-trunk"></div><div class="pst-fan-bar"></div><div class="pst-fan-ticks"></div></div>';
+    }
+
+    function laneHtml(branch) {
+      var bid = branch.id;
+      var style = 'style="--bc:var(' + esc(branch.color || '--accent') + ')"';
+      var laneCls = 'pst-lane' + (branch.on ? '' : ' pst-off');
+      var out = '';
+      out += '<div class="' + laneCls + '" ' + style + '>';
+      out += '<div class="pst-lane-header">';
+      out += '<div class="pst-lane-head-top">';
+      out += iconSpan(branch.ic);
+      out += titleHtml('branch|' + bid, branch.t, 'pst-lane-title');
+      out += '<span class="pst-lane-remove" data-pst-role="removebranch" data-path="branch|' + esc(bid) + '">' + iconSpan('x') + '</span>';
+      out += '</div>';
+      out += swHtml('branch|' + bid, branch.on);
+      out += '</div>';
+      out += '<div class="pst-match-label">when it hears</div>';
+      out += '<div class="pst-match">';
+      var match = branch.match || [];
+      var k;
+      for (k = 0; k < match.length && k < 8; k++) {
+        out += '<span class="pst-chip">' + esc(match[k]) + '<span class="pst-chip-x" data-pst-role="chipx" data-branch="' + esc(bid) + '" data-kw="' + esc(match[k]) + '">' + iconSpan('x') + '</span></span>';
+      }
+      out += '<input type="text" class="pst-kw-input" placeholder="+ keyword" data-pst-role="kwinput" data-branch="' + esc(bid) + '" />';
+      out += '</div>';
+      out += '<div class="pst-branch-steps">';
+      var steps = branch.steps || [];
+      var j, st, spath;
+      for (j = 0; j < steps.length; j++) {
+        if (j > 0) { out += '<div class="pst-connector"></div>'; }
+        st = steps[j];
+        spath = 'branchstep|' + bid + '|' + j;
+        out += '<div class="pst-bstep' + (st.on ? '' : ' pst-off') + '">';
+        out += iconSpan(st.ic);
+        out += titleHtml(spath, st.t, 'pst-bstep-title');
+        out += swHtml(spath, st.on);
+        out += '<span class="pst-bstep-x" data-pst-role="removestep" data-branch="' + esc(bid) + '" data-idx="' + j + '">' + iconSpan('x') + '</span>';
+        out += '</div>';
+      }
+      out += '</div>';
+      out += '<button type="button" class="pst-addstep-btn" data-pst-role="addstep" data-branch="' + esc(bid) + '">' + iconSpan('plus') + '<span>step</span></button>';
+      var gate = branch.gate || { on: true, label: 'Review before ship' };
+      out += '<div class="pst-gate' + (gate.on ? ' pst-on' : ' pst-off') + '">';
+      out += iconSpan('shield');
+      out += titleHtml('gate|' + bid, gate.label, 'pst-gate-label');
+      out += swHtml('gate|' + bid, gate.on);
+      out += '</div>';
+      out += '</div>';
+      return out;
+    }
+
+    function addBranchColHtml() {
+      return '<div class="pst-addbranch" data-pst-role="addbranch"><span class="pst-addbranch-inner">' + iconSpan('plus') + '<span>New branch</span></span></div>';
+    }
+
+    function footHtml() {
+      var pre = cfg.pre || [];
+      var post = cfg.post || [];
+      var branches = cfg.branches || [];
+      var n = pre.length + post.length;
+      var i;
+      for (i = 0; i < branches.length; i++) {
+        n += (branches[i].steps || []).length;
+      }
+      var m = branches.length;
+      var out = '';
+      out += '<div class="pst-foot">';
+      out += '<span class="pst-foot-note">Applied to every prompt &middot; demo and real runs both follow this tree</span>';
+      out += '<span class="pst-badge">' + n + ' steps &middot; ' + m + ' branches</span>';
+      out += '</div>';
+      return out;
+    }
+
+    function buildHtml() {
+      var pre = cfg.pre || [];
+      var post = cfg.post || [];
+      var branches = cfg.branches || [];
+      var out = '';
+      out += '<div class="pst-root">';
+      out += '<div class="pst-header">';
+      out += '<div class="pst-header-text">';
+      out += '<div class="pst-title-main">How Side thinks</div>';
+      out += '<div class="pst-sub">Every prompt flows through this tree before a fleet is built. It&rsquo;s yours &mdash; toggle, edit, extend.</div>';
+      out += '</div>';
+      out += '<button type="button" class="pst-btn pst-btn-ghost" data-pst-reset="1">Reset to default</button>';
+      out += '</div>';
+      out += '<div class="pst-tree">';
+      out += '<div class="pst-stack">' + stackHtml('pre', pre) + '</div>';
+      out += fanHtml();
+      out += '<div class="pst-lanes">';
+      var i;
+      for (i = 0; i < branches.length; i++) {
+        out += laneHtml(branches[i]);
+      }
+      out += addBranchColHtml();
+      out += '</div>';
+      out += fanHtml();
+      out += '<div class="pst-stack">' + stackHtml('post', post) + '</div>';
+      out += '</div>';
+      out += footHtml();
+      out += '</div>';
+      return out;
+    }
+
+    function render() {
+      var lanesEl = mountEl.querySelector('.pst-lanes');
+      var prevScroll = lanesEl ? lanesEl.scrollLeft : 0;
+      mountEl.innerHTML = buildHtml();
+      window.hydrate(mountEl);
+      var newLanes = mountEl.querySelector('.pst-lanes');
+      if (newLanes) { newLanes.scrollLeft = prevScroll; }
+    }
+
+    function saveAndRender() {
+      resetPending = false;
+      window.SidePipeline.save(cfg);
+      render();
+    }
+
+    function setTitleByPath(path, val) {
+      var parts = path.split('|');
+      var kind = parts[0];
+      var it, b, idx;
+      if (kind === 'pre') {
+        it = findById(cfg.pre || [], parts[1]);
+        if (it) { it.t = val; }
+      } else if (kind === 'post') {
+        it = findById(cfg.post || [], parts[1]);
+        if (it) { it.t = val; }
+      } else if (kind === 'branch') {
+        b = findBranch(parts[1]);
+        if (b) { b.t = val; }
+      } else if (kind === 'branchstep') {
+        b = findBranch(parts[1]);
+        idx = parseInt(parts[2], 10);
+        if (b && b.steps && b.steps[idx]) { b.steps[idx].t = val; }
+      } else if (kind === 'gate') {
+        b = findBranch(parts[1]);
+        if (b) {
+          if (!b.gate) { b.gate = { on: true, label: '' }; }
+          b.gate.label = val;
+        }
+      }
+    }
+
+    function toggleByPath(path) {
+      var parts = path.split('|');
+      var kind = parts[0];
+      var it, b, idx;
+      if (kind === 'pre') {
+        it = findById(cfg.pre || [], parts[1]);
+        if (it) { it.on = !it.on; }
+      } else if (kind === 'post') {
+        it = findById(cfg.post || [], parts[1]);
+        if (it) { it.on = !it.on; }
+      } else if (kind === 'branch') {
+        b = findBranch(parts[1]);
+        if (b) { b.on = !b.on; }
+      } else if (kind === 'branchstep') {
+        b = findBranch(parts[1]);
+        idx = parseInt(parts[2], 10);
+        if (b && b.steps && b.steps[idx]) { b.steps[idx].on = !b.steps[idx].on; }
+      } else if (kind === 'gate') {
+        b = findBranch(parts[1]);
+        if (b) {
+          if (!b.gate) { b.gate = { on: true, label: 'Review before ship' }; }
+          b.gate.on = !b.gate.on;
+        }
+      }
+      saveAndRender();
+    }
+
+    function removeStep(bid, idx) {
+      var b = findBranch(bid);
+      if (!b || !b.steps) { return; }
+      if (b.steps.length <= 1) {
+        window.toast('A branch needs at least one step');
+        return;
+      }
+      b.steps.splice(idx, 1);
+      saveAndRender();
+    }
+
+    function removeBranch(bid) {
+      if (bid === 'default') {
+        window.toast('Keep the fallback branch');
+        return;
+      }
+      var branches = cfg.branches || [];
+      var i, idx = -1;
+      for (i = 0; i < branches.length; i++) {
+        if (branches[i].id === bid) { idx = i; break; }
+      }
+      if (idx >= 0) {
+        branches.splice(idx, 1);
+        saveAndRender();
+      }
+    }
+
+    function addStep(bid) {
+      var b = findBranch(bid);
+      if (!b) { return; }
+      if (!b.steps) { b.steps = []; }
+      b.steps.push({ t: 'New step', ic: 'agent', on: true });
+      saveAndRender();
+    }
+
+    function addBranch() {
+      if (!cfg.branches) { cfg.branches = []; }
+      var id = makeId('br');
+      cfg.branches.push({
+        id: id,
+        t: 'New branch',
+        ic: 'fork',
+        color: '--violet',
+        match: [],
+        on: true,
+        steps: [{ t: 'Do the work', ic: 'agent', on: true }],
+        gate: { on: true, label: 'Your yes' }
+      });
+      saveAndRender();
+    }
+
+    function removeKeyword(bid, kw) {
+      var b = findBranch(bid);
+      if (!b || !b.match) { return; }
+      var idx = b.match.indexOf(kw);
+      if (idx >= 0) {
+        b.match.splice(idx, 1);
+        saveAndRender();
+      }
+    }
+
+    function addKeyword(bid, raw) {
+      var b = findBranch(bid);
+      if (!b) { return; }
+      if (!b.match) { b.match = []; }
+      var val = String(raw || '').replace(/^\s+|\s+$/g, '').toLowerCase();
+      if (!val) { return; }
+      if (b.match.length >= 8) { return; }
+      if (b.match.indexOf(val) >= 0) { return; }
+      b.match.push(val);
+      saveAndRender();
+    }
+
+    function onResetClick(btn) {
+      if (!resetPending) {
+        resetPending = true;
+        btn.textContent = 'Click again to reset';
+        btn.className = 'pst-btn pst-btn-ghost pst-pending';
+        resetTimer = setTimeout(function () {
+          resetPending = false;
+          btn.textContent = 'Reset to default';
+          btn.className = 'pst-btn pst-btn-ghost';
+        }, 3000);
+      } else {
+        if (resetTimer) { clearTimeout(resetTimer); resetTimer = null; }
+        resetPending = false;
+        cfg = window.SidePipeline.reset();
+        render();
+        window.toast('Pipeline reset to default');
+      }
+    }
+
+    function startEdit(el) {
+      var path = el.getAttribute('data-path');
+      var text = el.textContent;
+      var input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'pst-edit';
+      input.setAttribute('data-path', path);
+      input.setAttribute('data-pst-editinput', '1');
+      input.value = text;
+      if (el.parentNode) { el.parentNode.replaceChild(input, el); }
+      input.focus();
+      input.select();
+    }
+
+    function commitEdit(inputEl) {
+      if (inputEl.getAttribute('data-committed')) { return; }
+      inputEl.setAttribute('data-committed', '1');
+      var path = inputEl.getAttribute('data-path');
+      var val = String(inputEl.value || '').replace(/^\s+|\s+$/g, '');
+      if (val) {
+        setTitleByPath(path, val);
+        saveAndRender();
+      } else {
+        render();
+      }
+    }
+
+    function onClick(e) {
+      var el = e.target;
+      while (el && el !== mountEl && el.nodeType === 1 && !el.getAttribute('data-pst-role') && !el.hasAttribute('data-pst-reset')) {
+        el = el.parentNode;
+      }
+      if (!el || el === mountEl || el.nodeType !== 1) { return; }
+      if (el.hasAttribute('data-pst-reset')) { onResetClick(el); return; }
+      var role = el.getAttribute('data-pst-role');
+      if (!role) { return; }
+      if (role === 'toggle') {
+        toggleByPath(el.getAttribute('data-path'));
+      } else if (role === 'title') {
+        startEdit(el);
+      } else if (role === 'chipx') {
+        removeKeyword(el.getAttribute('data-branch'), el.getAttribute('data-kw'));
+      } else if (role === 'removestep') {
+        removeStep(el.getAttribute('data-branch'), parseInt(el.getAttribute('data-idx'), 10));
+      } else if (role === 'removebranch') {
+        var p = el.getAttribute('data-path').split('|');
+        removeBranch(p[1]);
+      } else if (role === 'addstep') {
+        addStep(el.getAttribute('data-branch'));
+      } else if (role === 'addbranch') {
+        addBranch();
+      }
+    }
+
+    function onKeydown(e) {
+      var t = e.target;
+      if (!t || t.nodeType !== 1) { return; }
+      if (t.getAttribute('data-pst-editinput')) {
+        if (e.key === 'Enter' || e.keyCode === 13) {
+          e.preventDefault();
+          commitEdit(t);
+        } else if (e.key === 'Escape' || e.keyCode === 27) {
+          e.preventDefault();
+          t.setAttribute('data-committed', '1');
+          render();
+        }
+      } else if (t.getAttribute('data-pst-role') === 'kwinput') {
+        if (e.key === 'Enter' || e.keyCode === 13) {
+          e.preventDefault();
+          addKeyword(t.getAttribute('data-branch'), t.value);
+          t.value = '';
+        }
+      }
+    }
+
+    function onFocusOut(e) {
+      var t = e.target;
+      if (t && t.nodeType === 1 && t.getAttribute('data-pst-editinput')) {
+        commitEdit(t);
+      }
+    }
+
+    mountEl.addEventListener('click', onClick);
+    mountEl.addEventListener('keydown', onKeydown);
+    mountEl.addEventListener('focusout', onFocusOut);
+
+    render();
+  }
+
+  window.buildPipelineStudio = buildPipelineStudio;
+
+})();
 </script>
 <!-- ==SCRIPT-MARK== -->
