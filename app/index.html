@@ -3106,7 +3106,7 @@ function genGraph(goal,subs){
   add('o','orchestrator','fleet','Orchestrator','routes + forks','Splits the work across agents and picks a model for each.','run','C',2,'Opus 4.8','$0.40','60k',['route']);
   add('f','fork','fork','Fork','parallel','Runs the sub-agents in parallel on one branch.','run','C',3);
   var cols=['L','C','R'];
-  subs.forEach(function(s,i){var id='s'+i;add(id,'subagent',s.icon||'agent',s.title,s.sub||'agent',s.body||('Handles the '+s.title.toLowerCase()+' step.'),i===0?'done':i===1?'run':'queued',cols[i%3],4,s.model||'Sonnet',s.cost||'$0.30','80k',s.tags||[]);e.push({from:'f',to:id,kind:'flow'});e.push({from:id,to:'cv',kind:'flow'});});
+  subs.forEach(function(s,i){var id='s'+i;var sty=(/\bgate\b/i.test(''+(s.title||''))||s.icon==='gate')?'gate':'subagent';add(id,sty,s.icon||'agent',s.title,s.sub||'agent',s.body||('Handles the '+s.title.toLowerCase()+' step.'),i===0?'done':i===1?'run':'queued',cols[i%3],4,s.model||'Sonnet',s.cost||'$0.30','80k',s.tags||[]);e.push({from:'f',to:id,kind:'flow'});e.push({from:id,to:'cv',kind:'flow'});});
   add('cv','converge','fork','Converge','merge','Merges the tracks into one shippable result.','queued','C',5);
   add('r','report','report','Report','QA + done','What shipped, what it cost, and what is next.','queued','C',6,'Sonnet','$0.10','&mdash;',['report']);
   e.push({from:'p',to:'b',kind:'flow'});e.push({from:'t',to:'b',kind:'dashed'});e.push({from:'b',to:'o',kind:'flow'});e.push({from:'t',to:'o',kind:'flow'});e.push({from:'o',to:'f',kind:'flow'});e.push({from:'cv',to:'r',kind:'flow'});
@@ -4342,6 +4342,35 @@ function brandFor(name){var k=brandKey(name);return k?BL[k]:null;}
 function brandChip(name,cls){var b=brandFor(name);if(b)return '<span class="brandchip '+(cls||'')+'">'+b+'</span>';return null;}
 /* expose core helpers so the injected modules (marketplace, World, Brain, Map, report, wf, tabs) render icons via the real svg/hydrate instead of falling back to empty placeholders */
 window.svg=svg;window.hydrate=hydrate;window.brandChip=brandChip;window.toast=toast;window.$=$;window.$$=$$;window.widgetHTML=widgetHTML;
+/* synthesize a payoff report for any freshly-run canvas that has no authored report */
+window.sideRunSummary=function(slug){
+  var g=GRAPHS[slug];if(!g||!g.nodes||!g.nodes.length)return null;
+  function esc(s){return (''+(s||'')).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  var name=(typeof GRAPHTITLE!=='undefined'&&GRAPHTITLE[slug])||'This run';
+  var goal='';g.nodes.forEach(function(n){if((n.type||'')==='prompt'&&!goal)goal=n.body||'';});
+  var cost=0,tok=0;
+  g.nodes.forEach(function(n){
+    var c=parseFloat((''+(n.cost||'')).replace(/[^0-9.]/g,''));if(c)cost+=c;
+    var tm=(''+(n.tok||'')).match(/([0-9.]+)\s*k/i);if(tm)tok+=parseFloat(tm[1]);
+  });
+  var MC=[['Opus','var(--accent)','the hard parts'],['Fable','var(--violet)','plans + routes'],['Sonnet','var(--sky)','builds'],['Haiku','var(--sun)','cheap steps'],['Local','var(--mint)','private work']];
+  var seen={},models=[];
+  g.nodes.forEach(function(n){var m=(''+(n.model||'')).replace(/&[a-z]+;/g,'').trim();if(!m||m==='-'||seen[m])return;seen[m]=1;
+    var mc='var(--ink-3)',role='worker';for(var i=0;i<MC.length;i++){if(m.indexOf(MC[i][0])>=0){mc=MC[i][1];role=MC[i][2];break;}}
+    models.push({c:mc,name:esc(m),role:role});});
+  var steps=[];
+  g.nodes.forEach(function(n){if((n.type||'')==='prompt')return;
+    steps.push({t:esc(n.title||'Step'),d:esc((''+(n.sub||n.body||'')).slice(0,64)),ic:n.icon||'agent',c:'var('+((typeof nodeColor==='function'&&nodeColor(n))||'--accent')+')',cost:(n.cost&&n.cost!=='&mdash;')?n.cost:'done'});});
+  var mins=Math.max(4,Math.round(g.nodes.length*2.5));
+  return {
+    title:esc(name),
+    sub:'&ldquo;'+esc(goal||name)+'&rdquo; &mdash; every step done, gated where it mattered, entirely on your machine.',
+    summary:{steps:g.nodes.length,wall:'~'+mins+' min',cost:cost?('$'+cost.toFixed(2)):'&mdash;',tokens:tok?(Math.round(tok)+'k'):'&mdash;',models:models},
+    steps:steps,
+    learned:{skill:'/'+(esc((''+name).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,24))||'this-run'),insight:'This whole fleet &mdash; plan, build, review, gate &mdash; is now one reusable button. Run it again next week, or put it on a schedule.',uses:'ready to reuse'},
+    share:{url:'side.build/r/'+(''+slug).replace(/[^a-z0-9-]+/gi,'-').toLowerCase()}
+  };
+};
 function modelLogo(name){var b=brandFor(name);return b?'<span class="mi brand">'+b+'</span>':null;}
 function palIcon(item){var b=brandChip(item.name,'pi');if(b)return b;var t=toolFor(item.name);if(t)return '<span class="pi toollogo" style="background:'+t.color+'">'+t.mono+'</span>';return '<span class="pi">'+svg(item.icon)+'</span>';}
 function renderPal(cat,q){
@@ -11153,13 +11182,39 @@ function buildAgentReport(mountEl, slug){
   if (typeof mountEl === 'string') { mountEl = (typeof $ === 'function') ? $(mountEl) : document.querySelector(mountEl); }
   if (!mountEl) return;
   var rep = AGENT_REPORTS[slug];
-  if (!rep) {
+  var syn = null;
+  if (!rep && typeof window.sideRunSummary === 'function') { try { syn = window.sideRunSummary(slug); } catch (e) { syn = null; } }
+  if (!rep && !syn) {
     mountEl.innerHTML = '<div class="ar-wrap"><div class="ar-empty">No shipped report for this agent yet. '
       + 'Run it once and the payoff screen appears here.</div></div>';
     return;
   }
 
-  var html = '<div class="ar-wrap">'
+  var html;
+  if (!rep) {
+    var srows = '';
+    for (var si = 0; si < syn.steps.length; si++) {
+      var st = syn.steps[si];
+      srows += '<button class="ar-art" type="button" data-art="' + st.t + '">'
+            +  '<span class="ar-artic" style="background:' + st.c + '">' + ar_icon(st.ic) + '</span>'
+            +  '<span class="ar-artm"><span class="n">' + st.t + '</span><span class="d">' + st.d + '</span></span>'
+            +  '<span class="open">' + st.cost + '</span></button>';
+    }
+    html = '<div class="ar-wrap">'
+      + '<div class="ar-hero"><div class="ar-hero-band">'
+      +   '<span class="ar-hero-badge">' + ar_icon('check') + 'Shipped &middot; run complete</span>'
+      +   '<h2 class="ar-hero-h">' + syn.title + '</h2>'
+      +   '<p class="ar-hero-sub">' + syn.sub + '</p>'
+      + '</div></div>'
+      + '<div class="ar-sec"><div class="ar-sech">' + ar_icon('bolt') + '<h3>Run summary</h3></div>' + ar_strip(syn.summary) + '</div>'
+      + '<div class="ar-sec"><div class="ar-sech">' + ar_icon('fleet') + '<h3>What the fleet did</h3><span class="cnt">' + syn.steps.length + ' steps</span></div>'
+      + '<div class="ar-arts">' + srows + '</div></div>'
+      + ar_learned(syn.learned)
+      + ar_shareBlock(syn.share)
+      + '</div>';
+  } else {
+  var _unused;
+  html = '<div class="ar-wrap">'
     + '<div class="ar-hero">'
     +   '<div class="ar-hero-band">'
     +     '<span class="ar-hero-badge">' + (rep.live ? '<span class="live"></span>' : ar_icon('check')) + rep.badge + '</span>'
@@ -11175,6 +11230,7 @@ function buildAgentReport(mountEl, slug){
     + ar_learned(rep.learned)
     + ar_shareBlock(rep.share)
     + '</div>';
+  }
 
   mountEl.innerHTML = html;
   if (typeof hydrate === 'function') hydrate(mountEl);
