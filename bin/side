@@ -2,7 +2,7 @@
 # Side — your AI sidekick · https://github.com/sboghossian/side
 set -e
 
-VERSION="0.4.0"
+VERSION="0.5.0"
 SIDE_HOME="${SIDE_HOME:-$HOME/.side}"
 PORT="${SIDE_PORT:-4600}"
 BASE="${SIDE_BASE:-https://sboghossian.github.io/side}"
