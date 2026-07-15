@@ -106,7 +106,7 @@ Then:
 | `side reset` | relaunch with a fresh profile (replays onboarding) |
 | `side --version` | print version |
 
-Configuration takes about 3 seconds — the onboarding *is* the config: pick a handle, write five sentences about yourself, connect your world. Done.
+Configuration takes about 30 seconds and asks exactly three things: your name, a few sentences of context your agents read before every run, and your Anthropic API key. Paste the key and Side is real; skip it and you get the safe demo sandbox.
 
 **Uninstall:** `rm -rf ~/.side ~/.local/bin/side` — that's everything.
 
@@ -134,6 +134,7 @@ Your key lives in your browser's local storage and is sent to exactly one place:
 - [x] One-command install + desktop launcher
 - [x] **Real runs: bring-your-own-key engine** — browser-direct Anthropic calls, per-node model routing, parallel sub-agents
 - [x] **Real artifacts on disk** — the `side` daemon writes shipped results under `~/Side/`
+- [x] **Real mode** — with a key, Side is *your* workspace: your name, your agents, your runs and spend, persisted across launches. The demo data only exists in demo mode
 - [ ] Real connectors: GitHub, Vercel, Linear, Gmail, PostHog
 - [ ] Skills: export/import a fleet as a shareable one-click Skill
 - [ ] Side World: public profiles + leaderboard
