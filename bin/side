@@ -1,0 +1,78 @@
+#!/bin/sh
+# Side — your AI sidekick · https://github.com/sboghossian/side
+set -e
+
+VERSION="0.1.0"
+SIDE_HOME="${SIDE_HOME:-$HOME/.side}"
+PORT="${SIDE_PORT:-4600}"
+BASE="${SIDE_BASE:-https://sboghossian.github.io/side}"
+URL="http://127.0.0.1:$PORT"
+
+usage() {
+  cat <<EOF
+Side $VERSION — your AI sidekick
+
+usage: side [command]
+
+  side            launch Side (serves $URL, opens a desktop window)
+  side update     pull the latest app
+  side reset      relaunch with a fresh profile (replays onboarding)
+  side --version  print version
+
+Side runs entirely on your machine. Nothing leaves your computer.
+EOF
+}
+
+case "${1:-}" in
+  -h|--help|help) usage; exit 0 ;;
+  -v|--version) echo "side $VERSION"; exit 0 ;;
+  update)
+    echo "-> updating Side"
+    mkdir -p "$SIDE_HOME/app"
+    curl -fsSL "$BASE/app/index.html" -o "$SIDE_HOME/app/index.html"
+    echo "OK updated. run \`side\` to start."
+    exit 0
+    ;;
+  reset) URL="$URL/?reset=1" ;;
+  "") ;;
+  *) usage; exit 1 ;;
+esac
+
+if [ ! -f "$SIDE_HOME/app/index.html" ]; then
+  echo "side: app not found. reinstall:"
+  echo "  curl -fsSL $BASE/install.sh | sh"
+  exit 1
+fi
+
+# serve (skip if something already listens on the port)
+listening() {
+  if command -v lsof >/dev/null 2>&1; then lsof -ti "tcp:$PORT" >/dev/null 2>&1
+  else nc -z 127.0.0.1 "$PORT" >/dev/null 2>&1; fi
+}
+if ! listening; then
+  ( cd "$SIDE_HOME/app" && nohup python3 -m http.server "$PORT" --bind 127.0.0.1 </dev/null >/dev/null 2>&1 & )
+  i=0
+  while ! listening && [ "$i" -lt 20 ]; do i=$((i+1)); sleep 0.1; done
+fi
+
+echo "* Side · $URL"
+
+if [ -n "${SIDE_NO_OPEN:-}" ]; then exit 0; fi
+
+# open as a desktop app window when a Chromium browser exists; else default browser
+if [ "$(uname)" = "Darwin" ]; then
+  for APP in "Google Chrome" "Brave Browser" "Microsoft Edge" "Chromium" "Arc"; do
+    if [ -d "/Applications/$APP.app" ]; then
+      open -na "$APP" --args --app="$URL" 2>/dev/null && exit 0
+    fi
+  done
+  open "$URL"
+else
+  for BIN in google-chrome chromium chromium-browser brave microsoft-edge; do
+    if command -v "$BIN" >/dev/null 2>&1; then
+      nohup "$BIN" --app="$URL" >/dev/null 2>&1 &
+      exit 0
+    fi
+  done
+  xdg-open "$URL" 2>/dev/null || echo "open $URL in your browser"
+fi
