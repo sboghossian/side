@@ -73,6 +73,10 @@ Never start from a blank page. Run a template, love the result, save the whole f
 
 <img src="assets/07-templates.png" alt="Template library" width="920">
 
+### 🎛️ Click a node, enter its world
+
+Every node opens as a full workspace: a live conversation with that agent on the right — its work and thinking stream in while the fleet runs, and you can probe or steer it mid-run — and a freeform canvas on the left where everything is a component: notes, follow-up prompts, diagrams, tasks, artifacts, previews, the terminal, per-node settings. Press `/` or `+ Add` and compose the page your way. It all persists.
+
 ### 🌳 A decision tree you control
 
 Every prompt flows through a global pipeline before a fleet is built: check the Brain, classify the ask, route it down the right lane — code builds discover the codebase first, outbound hits a hard no-auto-send gate, research gets a cite-check. The whole tree is yours: toggle steps, edit lanes, add branches, change the keywords that route to them. Press `⌘K → Decision tree`.
@@ -141,6 +145,7 @@ Your key lives in your browser's local storage and is sent to exactly one place:
 - [x] **Real mode** — with a key, Side is *your* workspace: your name, your agents, your runs and spend, persisted across launches. The demo data only exists in demo mode
 - [x] **The decision tree** — a user-configurable global pipeline (recall → classify → route → gate policy) that governs how every fleet is composed, in demo and real runs alike
 - [x] **Flow view** — the canvas's structured default projection: document-fast, lanes side-by-side, edit inline; the 2D Map stays one toggle away
+- [x] **The node designer** — click any node for a full workspace: live session chat (streams during runs, probe mid-run) + a freeform component canvas (notes, prompts, diagrams, tasks, artifacts, terminal, settings), persisted per node
 - [ ] Real connectors: GitHub, Vercel, Linear, Gmail, PostHog
 - [ ] Skills: export/import a fleet as a shareable one-click Skill
 - [ ] Side World: public profiles + leaderboard
