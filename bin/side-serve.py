@@ -9,7 +9,7 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "0.5.0"
+VERSION = "0.6.0"
 MAX_SAVE_BYTES = 2 * 1024 * 1024  # 2MB
 MAX_BODY_BYTES = 8 * 1024 * 1024  # hard cap on raw request body we will read
 
