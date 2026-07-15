@@ -113,17 +113,27 @@ Configuration takes about 3 seconds — the onboarding *is* the config: pick a h
 ## Under the hood
 
 - **One self-contained HTML file.** The entire product — canvas, fleet board, inbox, cost, templates, onboarding, command palette — is a single zero-dependency file. No build step, no node_modules, no framework.
-- **Local-first by design.** The launcher is ~80 lines of POSIX sh serving on `127.0.0.1`. Your keys, your files, your machine. Nothing phones home.
+- **Local-first by design.** The launcher is ~80 lines of POSIX sh plus a stdlib-only Python daemon on `127.0.0.1` — it serves the app and writes your shipped artifacts under `~/Side/`, and nothing else. Your keys, your files, your machine.
 - **A desktop app without the desktop-app tax.** `side` opens a chromeless app window if you have any Chromium browser, and falls back to your default browser. No Electron, no 200MB runtime.
 - Press `⌘K` anywhere. Everything is reachable from the keyboard.
 
-## Status & roadmap
+## The real engine (v0.2)
 
-Side today is a **fully-clickable product** — every screen, flow, gate, and panel you see above works. The execution engine that runs real agents against real APIs is the roadmap:
+Bring your own Anthropic API key — paste it in onboarding, or press `⌘K → Set API key` anytime — and Side stops simulating:
+
+- **Real plans.** Your prompt goes to Claude; the fleet on the canvas is the plan it returns.
+- **Real runs.** Every node is a real Claude call — brain, tools, orchestrator, then the sub-agents in parallel, then a converge pass that writes the final deliverable.
+- **Real numbers.** Tokens and cost in the shipped report come from actual API usage.
+- **Real artifacts.** After you approve the gate, the deliverable is written to `~/Side/runs/<fleet>/result.md` on your disk by the local daemon.
+
+Your key lives in your browser's local storage and is sent to exactly one place: `api.anthropic.com`. No key? Everything runs as the safe simulation — same product, demo fuel.
+
+## Status & roadmap
 
 - [x] The whole experience: canvas, routing, fleet board, gates, cost, templates, onboarding, ⌘K
 - [x] One-command install + desktop launcher
-- [ ] Real runs: bring-your-own-key execution engine (Claude Agent SDK first)
+- [x] **Real runs: bring-your-own-key engine** — browser-direct Anthropic calls, per-node model routing, parallel sub-agents
+- [x] **Real artifacts on disk** — the `side` daemon writes shipped results under `~/Side/`
 - [ ] Real connectors: GitHub, Vercel, Linear, Gmail, PostHog
 - [ ] Skills: export/import a fleet as a shareable one-click Skill
 - [ ] Side World: public profiles + leaderboard

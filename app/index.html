@@ -2483,7 +2483,7 @@ textarea.inp{resize:vertical;min-height:74px;line-height:1.5}
           <div class="bd">
             <div class="in">curl -fsSL sboghossian.github.io/side/install.sh | sh</div>
             <div class="c">-&gt; detecting platform&hellip; <span class="g">darwin-arm64</span></div>
-            <div class="c">-&gt; installing Side <span class="p">v1.0</span></div>
+            <div class="c">-&gt; installing Side <span class="p">v0.2</span></div>
             <div class="g">OK installed. run `agent` to start.</div>
             <div class="in">agent</div>
             <div class="p">* Side &middot; http://localhost:4600</div>
@@ -2519,6 +2519,9 @@ textarea.inp{resize:vertical;min-height:74px;line-height:1.5}
         <h2 class="onb-h">Connect your world</h2>
         <p class="onb-p">Optional. Pick what your agents can reach. You can change this anytime.</p>
         <div class="conns" id="onb-conns"></div>
+        <div class="field"><label>Anthropic API key <span class="hint">optional &middot; unlocks the real engine &middot; never leaves this machine</span></label>
+          <input class="inp" id="onb-key" type="password" placeholder="sk-ant-&hellip; (skip to explore in demo mode)" spellcheck="false" autocomplete="off" />
+        </div>
         <div class="toggle-row">
           <div class="tt"><b>Make my profile public</b><p>Show your best fleets on side.build/@steph and climb the World leaderboard.</p></div>
           <div class="sw on" id="onb-pub"></div>
@@ -3031,7 +3034,7 @@ function initOnb(){
     $$('#onb-steps .sd').forEach(function(d,i){d.classList.toggle('on',i===step);d.classList.toggle('done',i<step);});
     $$('.onb-pv').forEach(function(p){p.classList.toggle('on',+p.getAttribute('data-pv')===step);});}
   document.addEventListener('click',function(e){var b=e.target.closest('[data-onb]');if(!b)return;var a=b.getAttribute('data-onb');
-    if(a==='next')show(step+1);else if(a==='back')show(step-1);else if(a==='finish'){try{localStorage.setItem('side_onboarded','1');}catch(e){}go('app');}});
+    if(a==='next')show(step+1);else if(a==='back')show(step-1);else if(a==='finish'){var kk=$('#onb-key');if(kk&&(kk.value||'').trim()&&window.SideEngine){window.SideEngine.setKey(kk.value.trim());toast('Real engine on \u2014 your key stays on this machine');}try{localStorage.setItem('side_onboarded','1');}catch(e){}go('app');}});
   var u=$('#onb-user');u.addEventListener('input',function(){/* live handle */});
 }
 
@@ -3376,6 +3379,26 @@ function initCanvasModes(){
 var running=false;
 function runEngine(){
   if(running)return;
+  var gR=curGraph();
+  if(sideEngineOn()&&window.wfStartRun&&CUR_VIEW==='canvas'&&$('#viewport')&&gR&&gR.nodes&&gR.nodes.length){
+    running=true;var rbtn=$('#run-btn');if(rbtn){rbtn.classList.add('running');var rl0=rbtn.querySelector('.rl');if(rl0)rl0.textContent='Running';}
+    var steps=gR.nodes.map(function(n){return {id:n.id,name:n.title};});
+    window.wfStartRun($('#viewport'),{auto:false,steps:steps,onView:function(){
+      var hasGate=gR.nodes.filter(function(n){return nodeKind(n)==='gate';}).length>0;
+      if(hasGate&&typeof openGateFlow==='function'){openGateFlow({title:'Ship '+(typeof agentName==='function'?agentName():'this run'),onApprove:function(){sideAfterShip();}});}
+      else{sideAfterShip();}
+    }});
+    window.SideEngine.runGraph(gR,{
+      onNodeStart:function(n){if(window.wfSetNodeState)window.wfSetNodeState(n.id,'run');},
+      onNodeDone:function(n){if(window.wfSetNodeState)window.wfSetNodeState(n.id,'done');if(window.wfAdvance)window.wfAdvance();}
+    },function(err,res){
+      running=false;var b2=$('#run-btn');if(b2){b2.classList.remove('running');var r2=b2.querySelector('.rl');if(r2)r2.textContent='Run';}
+      if(err){if(window.wfClear)window.wfClear($('#viewport'));toast('Run failed: '+err.message);return;}
+      LASTRUN[curSlug]=res;gR.nodes.forEach(function(n){n.status='done';});
+      if(window.wfFinishRun)window.wfFinishRun($('#viewport'));
+    });
+    return;
+  }
   if(window.wfStartRun&&CUR_VIEW==='canvas'&&$('#viewport')){
     running=true;var rb=$('#run-btn');if(rb){rb.classList.add('running');var rrl=rb.querySelector('.rl');if(rrl)rrl.textContent='Running';}
     window.wfStartRun($('#viewport'),{onView:function(){
@@ -3532,7 +3555,23 @@ function runPromptFlow(text){
     $('[data-pfx]',host).addEventListener('click',closePF);
     $('[data-pfnext]',host).addEventListener('click',function(){if(step<2){step++;render();}else{finish();}});
   }
-  function finish(){closePF();var slug='new:'+(nodeSeq++);GRAPHS[slug]=genGraph(text,[{icon:'brain',title:'Recall'},{icon:'agent',title:'Build it'},{icon:'eye',title:'Review'},{icon:'shield',title:'Gate'}]);GRAPHTITLE[slug]=(text.length>26?text.slice(0,24)+'\u2026':text);curSlug=slug;navTo('canvas');Z=0.72;applyZoom();setTimeout(function(){toast('Built your fleet \u2014 press Run when ready');},400);}
+  function finishWith(ftitle,subs){closePF();var slug='new:'+(nodeSeq++);GRAPHS[slug]=genGraph(text,subs);GRAPHTITLE[slug]=ftitle||(text.length>26?text.slice(0,24)+'\u2026':text);curSlug=slug;navTo('canvas');Z=0.72;applyZoom();setTimeout(function(){toast('Built your fleet \u2014 press Run when ready');},400);}
+  function finishStatic(){finishWith(null,[{icon:'brain',title:'Recall'},{icon:'agent',title:'Build it'},{icon:'eye',title:'Review'},{icon:'shield',title:'Gate'}]);}
+  function finish(){
+    if(sideEngineOn()&&window.SideEngine.plan){
+      var stg=host.querySelector('.pf-stage');
+      if(stg){stg.innerHTML='<div class="pf-planning"><span class="ct-spin"></span><b>The fleet architect is planning your run&hellip;</b><span style="font-size:.78rem;color:var(--ink-3)">a real Claude call &middot; your key &middot; a few seconds</span></div>';}
+      window.SideEngine.plan(text,function(err,plan){
+        if(err||!plan||!plan.subs||!plan.subs.length){finishStatic();return;}
+        var OKIC={search:1,edit:1,agent:1,code:1,file:1,graph:1,mail:1,world:1,report:1,check:1};
+        var subs=plan.subs.map(function(s){return {icon:(s.icon&&OKIC[s.icon])?s.icon:'agent',title:(''+(s.title||'Agent')).slice(0,20),sub:(''+(s.sub||'agent')).slice(0,26),body:(''+(s.body||'')).slice(0,140),model:s.model||'Sonnet'};});
+        if(plan.gate!==false){subs.push({icon:'shield',title:'Gate',sub:(''+(plan.gateLabel||'your yes')).slice(0,26),body:'Holds anything irreversible until you approve.'});}
+        finishWith((''+(plan.title||'')).slice(0,30)||null,subs);
+      });
+      return;
+    }
+    finishStatic();
+  }
   function closePF(){host.classList.remove('on');setTimeout(function(){if(host.parentNode)host.parentNode.removeChild(host);},280);}
   step=0;render();
 }
@@ -4342,6 +4381,39 @@ function brandFor(name){var k=brandKey(name);return k?BL[k]:null;}
 function brandChip(name,cls){var b=brandFor(name);if(b)return '<span class="brandchip '+(cls||'')+'">'+b+'</span>';return null;}
 /* expose core helpers so the injected modules (marketplace, World, Brain, Map, report, wf, tabs) render icons via the real svg/hydrate instead of falling back to empty placeholders */
 window.svg=svg;window.hydrate=hydrate;window.brandChip=brandChip;window.toast=toast;window.$=$;window.$$=$$;window.widgetHTML=widgetHTML;
+var LASTRUN={};
+function sideEngineOn(){return !!(window.SideEngine&&window.SideEngine.hasKey&&window.SideEngine.hasKey());}
+function sideDaemonSave(relpath,content,cb){
+  try{
+    if(!window.fetch||location.protocol==='file:'){cb(new Error('no daemon'));return;}
+    fetch('/api/save',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({path:relpath,content:content})}).then(function(r){return r.json();}).then(function(j){if(j&&j.ok)cb(null,j.saved);else cb(new Error((j&&j.error)||'save failed'));})['catch'](function(e){cb(e);});
+  }catch(e){cb(e);}
+}
+function sideAfterShip(){
+  if(typeof openAgentReport==='function')openAgentReport(curSlug);
+  var res=LASTRUN[curSlug];
+  if(res&&res.final){
+    var safe=(''+curSlug).replace(/[^a-z0-9-]+/gi,'-').toLowerCase();
+    sideDaemonSave('runs/'+safe+'/result.md',res.final,function(err,abs){
+      if(!err){toast('Saved to ~/Side/runs/'+safe+'/result.md');}
+    });
+  }
+}
+function sideKeySectionHTML(){
+  var on=sideEngineOn();
+  return '<div class="dw-sec"><div class="dsh">'+svg('key')+' Real engine <span class="dsh-r">'+(on?'<span class="stt live">key set</span>':'<span class="stt">demo mode</span>')+'</span></div>'+
+    '<p class="dw-lead" style="margin:8px 0 10px">Bring your Anthropic API key to run fleets for real. Stored only in this browser, sent only to api.anthropic.com.</p>'+
+    '<input class="inp" id="eng-key" type="password" placeholder="'+(on?'key saved \u2014 paste to replace':'sk-ant-...')+'" spellcheck="false" autocomplete="off" style="width:100%">'+
+    '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-primary btn-sm" id="eng-save">Save key</button><button class="btn btn-soft btn-sm" id="eng-test">Test</button>'+(on?'<button class="btn btn-soft btn-sm" id="eng-clear">Remove</button>':'')+'</div>'+
+    '<div class="mono" id="eng-status" style="font-size:.68rem;color:var(--ink-3);margin-top:8px">'+(on?'Engine live: plans and runs use real Claude calls.':'Without a key, everything runs as a safe simulation.')+'</div></div>';
+}
+document.addEventListener('click',function(e){
+  var t=e.target;if(!t||!t.id)return;
+  var st=$('#eng-status');var inp=$('#eng-key');
+  if(t.id==='eng-save'){var v=(inp&&inp.value||'').trim();if(!v){if(st)st.textContent='Paste a key first.';return;}if(window.SideEngine){window.SideEngine.setKey(v);}if(st)st.textContent='Key saved on this machine. The engine is live.';toast('Real engine on');if(typeof curUtab!=='undefined'&&curUtab==='settings')setUtab('settings');}
+  else if(t.id==='eng-test'){if(!sideEngineOn()){if(st)st.textContent='Save a key first.';return;}if(st)st.textContent='Testing\u2026';window.SideEngine.selfTest(function(err,ms){if(st)st.textContent=err?('Test failed: '+err.message):('Live \u2014 round trip '+ms+'ms.');});}
+  else if(t.id==='eng-clear'){if(window.SideEngine)window.SideEngine.clearKey();toast('Key removed \u2014 back to demo mode');if(typeof curUtab!=='undefined'&&curUtab==='settings')setUtab('settings');}
+});
 /* synthesize a payoff report for any freshly-run canvas that has no authored report */
 window.sideRunSummary=function(slug){
   var g=GRAPHS[slug];if(!g||!g.nodes||!g.nodes.length)return null;
@@ -4362,7 +4434,11 @@ window.sideRunSummary=function(slug){
   g.nodes.forEach(function(n){if((n.type||'')==='prompt')return;
     steps.push({t:esc(n.title||'Step'),d:esc((''+(n.sub||n.body||'')).slice(0,64)),ic:n.icon||'agent',c:'var('+((typeof nodeColor==='function'&&nodeColor(n))||'--accent')+')',cost:(n.cost&&n.cost!=='&mdash;')?n.cost:'done'});});
   var mins=Math.max(4,Math.round(g.nodes.length*2.5));
+  var lr=(typeof LASTRUN!=='undefined')?LASTRUN[slug]:null;
+  if(lr){if(lr.totalCost)cost=lr.totalCost;if(lr.totalTok)tok=lr.totalTok/1000;}
   return {
+    real:!!lr,
+    final:(lr&&lr.final)?esc(lr.final):null,
     title:esc(name),
     sub:'&ldquo;'+esc(goal||name)+'&rdquo; &mdash; every step done, gated where it mattered, entirely on your machine.',
     summary:{steps:g.nodes.length,wall:'~'+mins+' min',cost:cost?('$'+cost.toFixed(2)):'&mdash;',tokens:tok?(Math.round(tok)+'k'):'&mdash;',models:models},
@@ -4689,7 +4765,7 @@ function drawerMachines(){
 }
 /* --- central settings hub (everything, one scroll, no sub-modals) --- */
 function drawerSettings(){
-  var models=MODELS.map(function(x,i){var lg=modelLogo(x[0]);return '<div class="model-opt'+(i===0?' on':'')+'"><span class="mi'+(lg?' brand':'')+'">'+(lg?brandFor(x[0]):x[1])+'</span><div><div>'+x[0]+'</div></div><span class="rk">'+(i===0?'default':x[2])+'</span></div>';}).join('');
+  var models=MODELS.map(function(x,i){var lg=modelLogo(x[0]);return sideKeySectionHTML()+'<div class="model-opt'+(i===0?' on':'')+'"><span class="mi'+(lg?' brand':'')+'">'+(lg?brandFor(x[0]):x[1])+'</span><div><div>'+x[0]+'</div></div><span class="rk">'+(i===0?'default':x[2])+'</span></div>';}).join('');
   var conns=[['GitHub','repos, PRs','live'],['Vercel','deploys','live'],['Linear','issues','live'],['Gmail','read + draft','live'],['Notion','docs','off'],['Slack','channels','off'],['Stripe','billing','soon']];
   var connRows=conns.map(function(c){var b=brandChip(c[0]);return '<div class="conn-row" data-connect="'+c[0]+'" style="cursor:pointer"><span class="ci">'+(b||svg('connect'))+'</span><span class="cn"><b>'+c[0]+'</b><p>'+c[1]+'</p></span><span class="stt '+c[2]+'">'+c[2]+'</span></div>';}).join('');
   return _accountHeader()+'<p class="dw-lead">Global settings for Side &mdash; your account, security, billing and defaults.</p>'+
@@ -5043,7 +5119,8 @@ function cmdkGroups(){
       {ic:'wave',t:'Talk to your fleet',s:'voice',run:openVoice},
       {ic:'connect',t:'Connect a tool',s:'integrations',run:function(){if(typeof connectToolFlow==='function')connectToolFlow();else openUtil('world');}},
       {ic:'heart',t:'Send feedback',s:'to the team',run:function(){if(typeof openFeedbackFlow==='function')openFeedbackFlow();}},
-      {ic:'refresh',t:'Replay onboarding',s:'setup',run:function(){try{localStorage.removeItem('side_onboarded');}catch(e){}go('onboard');}}
+      {ic:'refresh',t:'Replay onboarding',s:'setup',run:function(){try{localStorage.removeItem('side_onboarded');}catch(e){}go('onboard');}},
+      {ic:'key',t:'Set API key',s:'real engine',run:function(){openUtil('settings');}}
     ]},
     {g:'Theme',items:accents.map(function(c){return {ic:'palette',t:'Accent: '+c[1],s:c[0],run:function(){if(typeof setAccent==='function')setAccent(c[0]);if(typeof toast==='function')toast('Accent set to '+c[1]);}};})}
   ];
@@ -10816,6 +10893,7 @@ if(typeof window !== "undefined"){ window.buildBrainGraph = buildBrainGraph; }
 
   // expose
   window.wfStartRun = wfStartRun;
+  window.wfAdvance = function(){ if (WF.idx < WF.steps.length){ WF.idx++; if (WF.dock && WF.scrim && !WF.scrim.classList.contains('done') && !WF.scrim.classList.contains('blocked')) renderRun(); } };
   window.wfInjectMessage = wfInjectMessage;
   window.wfSetNodeState = wfSetNodeState;
   window.wfFinishRun = wfFinishRun;
@@ -11209,6 +11287,7 @@ function buildAgentReport(mountEl, slug){
       + '<div class="ar-sec"><div class="ar-sech">' + ar_icon('bolt') + '<h3>Run summary</h3></div>' + ar_strip(syn.summary) + '</div>'
       + '<div class="ar-sec"><div class="ar-sech">' + ar_icon('fleet') + '<h3>What the fleet did</h3><span class="cnt">' + syn.steps.length + ' steps</span></div>'
       + '<div class="ar-arts">' + srows + '</div></div>'
+      + ((syn.final)?('<div class="ar-sec"><div class="ar-sech">' + ar_icon('file') + '<h3>The deliverable</h3><span class="cnt">' + (syn.real?'real output':'preview') + '</span></div><pre class="ar-md">' + syn.final + '</pre></div>'):'')
       + ar_learned(syn.learned)
       + ar_shareBlock(syn.share)
       + '</div>';
@@ -13092,4 +13171,538 @@ img.fbshot{display:block;width:100%;height:auto;background:var(--surface-2)}
 .lp2 .demo-modes::-webkit-scrollbar{display:none}
 .lp2 .demo-modes .dm{white-space:nowrap;flex:none}
 </style>
+<style>
+.ar-md{white-space:pre-wrap;font-family:var(--mono);font-size:.78rem;line-height:1.55;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;padding:14px;max-height:340px;overflow:auto;margin:0}
+.pf-planning{padding:44px 12px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px;font-size:1rem}
+</style>
+<script>
+/* ============ SideEngine: the real execution engine (BYO key) ============ */
+(function(){
+  'use strict';
+
+  var API_URL = 'https://api.anthropic.com/v1/messages';
+  var KEY_NAME = 'side_api_key';
+  var TIMEOUT_MS = 60000;
+  var RETRY_BACKOFF_MS = 2000;
+
+  var MODELS = {
+    'Opus 4.8': 'claude-opus-4-8',
+    'Fable 5': 'claude-fable-5',
+    'Sonnet': 'claude-sonnet-5',
+    'Sonnet 5': 'claude-sonnet-5',
+    'Haiku': 'claude-haiku-4-5-20251001',
+    'Haiku 4.5': 'claude-haiku-4-5-20251001',
+    'Local': 'claude-haiku-4-5-20251001'
+  };
+
+  var COST = {
+    'claude-opus-4-8': { in: 15, out: 75 },
+    'claude-fable-5': { in: 20, out: 100 },
+    'claude-sonnet-5': { in: 3, out: 15 },
+    'claude-haiku-4-5-20251001': { in: 1, out: 5 }
+  };
+
+  var ROLE_SYS = {
+    brain: 'You are the Brain node of an agent fleet. Recall and infer the key context, constraints and prior knowledge needed for this goal. Reply in <=120 words of tight bullet points.',
+    tools: 'You are the Tools+Plan node. List the concrete tools, files and steps this goal needs. Reply in <=120 words of tight bullets.',
+    reasoning: 'You are the Reasoning node. Produce the sharpest plan of attack with risks. <=120 words.',
+    orchestrator: 'You are the Orchestrator. Split the goal into the parallel workstreams matching the sub-agents and state what each must deliver. <=120 words.'
+  };
+
+  /* ---------- key storage (localStorage, guarded) ---------- */
+
+  function getKey(){
+    try {
+      var k = window.localStorage.getItem(KEY_NAME);
+      return k ? k : null;
+    } catch (e){
+      return null;
+    }
+  }
+
+  function setKey(k){
+    try {
+      window.localStorage.setItem(KEY_NAME, k == null ? '' : String(k));
+    } catch (e){
+      if (window.console && window.console.warn){ window.console.warn('SideEngine.setKey failed: ' + e.message); }
+    }
+  }
+
+  function clearKey(){
+    try {
+      window.localStorage.removeItem(KEY_NAME);
+    } catch (e){
+      if (window.console && window.console.warn){ window.console.warn('SideEngine.clearKey failed: ' + e.message); }
+    }
+  }
+
+  function hasKey(){
+    var k = getKey();
+    return !!(k && k.length > 0);
+  }
+
+  /* ---------- helpers ---------- */
+
+  function computeCost(model, inTok, outTok){
+    var c = COST[model];
+    if (!c){ return 0; }
+    return (inTok / 1000000) * c.in + (outTok / 1000000) * c.out;
+  }
+
+  function resolveModel(label){
+    var clean = '';
+    if (label){
+      clean = String(label).replace(/&[#a-zA-Z0-9]+;/g, '');
+      clean = clean.replace(/^\s+/, '').replace(/\s+$/, '');
+    }
+    var id = MODELS[clean];
+    if (!id){ id = MODELS['Sonnet']; }
+    return id;
+  }
+
+  function truncateContext(s){
+    if (s.length > 4000){
+      return s.substring(s.length - 4000);
+    }
+    return s;
+  }
+
+  function nodeName(node){
+    if (!node){ return 'node'; }
+    if (node.title){ return node.title; }
+    if (node.id){ return String(node.id); }
+    if (node.type){ return node.type; }
+    return 'node';
+  }
+
+  function series(tasks, done){
+    var idx = 0;
+    function next(){
+      if (idx >= tasks.length){ done(); return; }
+      var t = tasks[idx];
+      idx++;
+      t(next);
+    }
+    next();
+  }
+
+  /* ---------- low-level Messages API call ---------- */
+
+  function call(opts, cb){
+    var key = getKey();
+    if (!key){
+      cb(new Error('No API key set'));
+      return;
+    }
+    opts = opts || {};
+    var model = opts.model;
+    var maxTokens = opts.maxTokens ? opts.maxTokens : 1024;
+    var body = {
+      model: model,
+      max_tokens: maxTokens,
+      system: opts.system ? opts.system : '',
+      messages: [{ role: 'user', content: opts.user ? opts.user : '' }]
+    };
+    var payload;
+    try {
+      payload = JSON.stringify(body);
+    } catch (ePay){
+      cb(new Error('Failed to encode request body: ' + ePay.message));
+      return;
+    }
+
+    var attempted = false;
+
+    function attempt(){
+      var xhr;
+      try {
+        xhr = new XMLHttpRequest();
+      } catch (eX){
+        cb(new Error('XMLHttpRequest unavailable: ' + eX.message));
+        return;
+      }
+      var settled = false;
+
+      function finish(err, data){
+        if (settled){ return; }
+        settled = true;
+        if (err){ cb(err); } else { cb(null, data); }
+      }
+
+      try {
+        xhr.open('POST', API_URL, true);
+        xhr.timeout = TIMEOUT_MS;
+        xhr.setRequestHeader('x-api-key', key);
+        xhr.setRequestHeader('anthropic-version', '2023-06-01');
+        xhr.setRequestHeader('anthropic-dangerous-direct-browser-access', 'true');
+        xhr.setRequestHeader('content-type', 'application/json');
+      } catch (eOpen){
+        finish(new Error('Request setup failed: ' + eOpen.message));
+        return;
+      }
+
+      xhr.ontimeout = function(){
+        finish(new Error('Request timed out after ' + TIMEOUT_MS + 'ms'));
+      };
+      xhr.onerror = function(){
+        finish(new Error('Network error contacting API'));
+      };
+      xhr.onload = function(){
+        var status = xhr.status;
+        var raw = xhr.responseText || '';
+
+        var isOverload = false;
+        if (status === 429 || status === 529){ isOverload = true; }
+        if (raw.indexOf('overloaded_error') !== -1){ isOverload = true; }
+        if (isOverload && !attempted){
+          attempted = true;
+          setTimeout(attempt, RETRY_BACKOFF_MS);
+          return;
+        }
+
+        if (status < 200 || status >= 300){
+          var msg = 'API error ' + status;
+          try {
+            var errObj = JSON.parse(raw);
+            if (errObj && errObj.error && errObj.error.message){
+              msg = 'API error ' + status + ': ' + errObj.error.message;
+            }
+          } catch (eErr){ /* keep generic msg */ }
+          finish(new Error(msg));
+          return;
+        }
+
+        var parsed;
+        try {
+          parsed = JSON.parse(raw);
+        } catch (eParse){
+          finish(new Error('Failed to parse API response'));
+          return;
+        }
+
+        var text = '';
+        if (parsed && parsed.content && parsed.content.length){
+          var i;
+          for (i = 0; i < parsed.content.length; i++){
+            var block = parsed.content[i];
+            if (block && block.type === 'text' && typeof block.text === 'string'){
+              text += block.text;
+            }
+          }
+        }
+
+        var inTok = 0, outTok = 0;
+        if (parsed && parsed.usage){
+          inTok = parsed.usage.input_tokens ? parsed.usage.input_tokens : 0;
+          outTok = parsed.usage.output_tokens ? parsed.usage.output_tokens : 0;
+        }
+        var cost = computeCost(model, inTok, outTok);
+        finish(null, { text: text, inTok: inTok, outTok: outTok, cost: cost });
+      };
+
+      try {
+        xhr.send(payload);
+      } catch (eSend){
+        finish(new Error('Send failed: ' + eSend.message));
+      }
+    }
+
+    attempt();
+  }
+
+  /* ---------- plan ---------- */
+
+  function plan(goal, cb){
+    var system = 'You are the planning core of "Side", an agent-fleet orchestrator. '
+      + 'Given a user goal, design a small fleet of sub-agents to accomplish it. '
+      + 'Respond with STRICT JSON ONLY. No prose, no markdown fences, no commentary. '
+      + 'The JSON shape must be exactly: '
+      + '{"title": string fleet name up to 28 chars, '
+      + '"subs": array of 3 to 5 items where each item is '
+      + '{"icon": one of search|edit|agent|code|file|graph|mail|world|report|check, '
+      + '"title": string up to 18 chars, "sub": string up to 24 chars, '
+      + '"body": one sentence, "model": one of Opus 4.8|Sonnet|Haiku}, '
+      + '"gate": boolean true if any step is irreversible such as sending, deploying or publishing, '
+      + '"gateLabel": string up to 30 chars}. '
+      + 'Pick Opus 4.8 for hard reasoning, Sonnet for standard work, Haiku for simple tasks. '
+      + 'Output only the JSON object, nothing else.';
+    var user = 'GOAL: ' + goal;
+
+    call({ model: 'claude-sonnet-5', system: system, user: user, maxTokens: 1200 }, function(err, res){
+      if (err){ cb(err); return; }
+      var text = res && res.text ? res.text : '';
+      var start = text.indexOf('{');
+      var end = text.lastIndexOf('}');
+      if (start === -1 || end === -1 || end < start){
+        cb(new Error('Plan response was not JSON'));
+        return;
+      }
+      var slice = text.substring(start, end + 1);
+      var obj;
+      try {
+        obj = JSON.parse(slice);
+      } catch (eP){
+        cb(new Error('Failed to parse plan JSON: ' + eP.message));
+        return;
+      }
+      obj.usage = { inTok: res.inTok, outTok: res.outTok, cost: res.cost };
+      cb(null, obj);
+    });
+  }
+
+  /* ---------- runGraph ---------- */
+
+  function runApiNode(node, system, userContent, maxTokens, accumulate, hooksObj, state, doneCb){
+    hooksObj.onNodeStart(node);
+    call({ model: resolveModel(node.model), system: system, user: userContent, maxTokens: maxTokens }, function(err, res){
+      if (err){
+        node.out = '(failed: ' + err.message + ')';
+        node.failed = true;
+        node.realTok = 0;
+        node.realCost = 0;
+        state.failedCount++;
+        hooksObj.onLog('Node "' + nodeName(node) + '" failed: ' + err.message);
+        state.outputs.push({ id: node.id, title: node.title, out: node.out, tok: 0, cost: 0 });
+        hooksObj.onNodeDone(node);
+        doneCb(true);
+        return;
+      }
+      node.out = res.text;
+      node.realTok = res.inTok + res.outTok;
+      node.realCost = res.cost;
+      state.totalTok += node.realTok;
+      state.totalCost += node.realCost;
+      if (accumulate){
+        state.context = truncateContext(state.context + '\n\n[' + nodeName(node) + ']\n' + res.text);
+      }
+      state.outputs.push({ id: node.id, title: node.title, out: node.out, tok: node.realTok, cost: node.realCost });
+      hooksObj.onNodeDone(node);
+      doneCb(false);
+    });
+  }
+
+  function animateSkip(node, hooksObj, doneCb){
+    node.out = '';
+    hooksObj.onNodeStart(node);
+    setTimeout(function(){
+      hooksObj.onNodeDone(node);
+      doneCb();
+    }, 300);
+  }
+
+  function runGraph(graph, hooks, cb){
+    hooks = hooks || {};
+    var onNodeStart = hooks.onNodeStart || function(){};
+    var onNodeDone = hooks.onNodeDone || function(){};
+    var onLog = hooks.onLog || function(){};
+    var hooksObj = { onNodeStart: onNodeStart, onNodeDone: onNodeDone, onLog: onLog };
+
+    if (!hasKey()){
+      cb(new Error('No API key set'));
+      return;
+    }
+    if (!graph || !graph.nodes || !graph.nodes.length){
+      cb(new Error('Empty graph: no nodes to run'));
+      return;
+    }
+
+    var nodes = graph.nodes;
+    var i, ni, oi;
+
+    /* find prompt node -> goal */
+    var promptSkip = null;
+    for (i = 0; i < nodes.length; i++){
+      if (nodes[i] && nodes[i].type === 'prompt'){ promptSkip = nodes[i]; break; }
+    }
+    var goal = (promptSkip && promptSkip.body) ? promptSkip.body : (graph.goal ? graph.goal : '');
+
+    var state = {
+      goal: goal,
+      context: '',
+      outputs: [],
+      totalTok: 0,
+      totalCost: 0,
+      failedCount: 0,
+      seqCount: 0,
+      seqFailed: 0
+    };
+
+    /* classify nodes */
+    var seqNodes = [];
+    var order = ['brain', 'tools', 'reasoning', 'orchestrator'];
+    for (oi = 0; oi < order.length; oi++){
+      for (ni = 0; ni < nodes.length; ni++){
+        if (nodes[ni] && nodes[ni].type === order[oi]){ seqNodes.push(nodes[ni]); }
+      }
+    }
+
+    var agentNodes = [];
+    var convergeNode = null;
+    var reportNode = null;
+    var skipNodes = [];
+    for (ni = 0; ni < nodes.length; ni++){
+      var nd = nodes[ni];
+      if (!nd){ continue; }
+      var t = nd.type;
+      if (t === 'subagent' || t === 'agent'){ agentNodes.push(nd); }
+      else if (t === 'converge'){ if (!convergeNode){ convergeNode = nd; } }
+      else if (t === 'report'){ if (!reportNode){ reportNode = nd; } }
+      else if (t === 'gate' || t === 'fork' || t === 'hook'){ skipNodes.push(nd); }
+    }
+    state.seqCount = seqNodes.length;
+
+    onLog('planning context...');
+
+    var tasks = [];
+
+    /* 1. prompt node animates first (skipped, no API) */
+    if (promptSkip){
+      tasks.push(function(next){ animateSkip(promptSkip, hooksObj, next); });
+    }
+
+    /* 2. sequential phase */
+    (function(){
+      var k;
+      for (k = 0; k < seqNodes.length; k++){
+        (function(node){
+          tasks.push(function(next){
+            var sys = ROLE_SYS[node.type] || 'You are a helper node in an agent fleet. Be concise.';
+            var userContent = 'GOAL: ' + state.goal + '\n\nCONTEXT SO FAR:\n' + state.context;
+            runApiNode(node, sys, userContent, 700, true, hooksObj, state, function(failed){
+              if (failed){ state.seqFailed++; }
+              next();
+            });
+          });
+        })(seqNodes[k]);
+      }
+    })();
+
+    /* 3. parallel phase: subagent/agent nodes */
+    if (agentNodes.length){
+      tasks.push(function(next){
+        var remaining = agentNodes.length;
+        var settledSelf = false;
+        function oneDone(){
+          remaining--;
+          if (remaining <= 0 && !settledSelf){ settledSelf = true; next(); }
+        }
+        onLog('dispatching ' + agentNodes.length + ' agents...');
+        var j;
+        for (j = 0; j < agentNodes.length; j++){
+          (function(node){
+            var sys = 'You are the "' + nodeName(node) + '" agent in a fleet. Produce your actual deliverable for your slice of the goal, concise but real (<=350 words). Output the deliverable itself, no preamble.';
+            var userContent = 'GOAL: ' + state.goal + '\n\nCONTEXT SO FAR:\n' + state.context;
+            runApiNode(node, sys, userContent, 1500, false, hooksObj, state, function(){ oneDone(); });
+          })(agentNodes[j]);
+        }
+      });
+    }
+
+    /* 4. converge node */
+    if (convergeNode){
+      tasks.push(function(next){
+        var sys = 'You are the Converge node. Merge the workstream outputs into one coherent final deliverable in Markdown, with a # title. <=600 words.';
+        var merged = 'GOAL: ' + state.goal + '\n\n';
+        var m;
+        for (m = 0; m < agentNodes.length; m++){
+          var an = agentNodes[m];
+          merged += '## ' + nodeName(an) + '\n' + (an.out ? an.out : '') + '\n\n';
+        }
+        onLog('converging workstreams...');
+        runApiNode(convergeNode, sys, merged, 2000, false, hooksObj, state, function(){ next(); });
+      });
+    }
+
+    /* 5. report node: local synthesis, no API */
+    if (reportNode){
+      tasks.push(function(next){
+        hooksObj.onNodeStart(reportNode);
+        var summary = 'Fleet run complete: ' + state.outputs.length + ' nodes executed, '
+          + state.totalTok + ' tokens, $' + state.totalCost.toFixed(4) + ' est.';
+        if (state.failedCount > 0){ summary += ' (' + state.failedCount + ' failed)'; }
+        reportNode.out = summary;
+        reportNode.realTok = 0;
+        reportNode.realCost = 0;
+        state.outputs.push({ id: reportNode.id, title: reportNode.title, out: reportNode.out, tok: 0, cost: 0 });
+        hooksObj.onNodeDone(reportNode);
+        next();
+      });
+    }
+
+    /* 6. remaining skipped nodes (gate/fork/hook) animate */
+    (function(){
+      var s;
+      for (s = 0; s < skipNodes.length; s++){
+        (function(node){
+          tasks.push(function(next){ animateSkip(node, hooksObj, next); });
+        })(skipNodes[s]);
+      }
+    })();
+
+    series(tasks, function(){
+      /* catastrophic: all sequential nodes failed */
+      if (state.seqCount > 0 && state.seqFailed === state.seqCount){
+        cb(new Error('All sequential nodes failed - fleet aborted'));
+        return;
+      }
+
+      var finalText = '';
+      if (convergeNode && convergeNode.out && !convergeNode.failed){
+        finalText = convergeNode.out;
+      } else {
+        var parts = [];
+        var p;
+        for (p = 0; p < agentNodes.length; p++){
+          if (agentNodes[p].out && !agentNodes[p].failed){
+            parts.push('## ' + nodeName(agentNodes[p]) + '\n' + agentNodes[p].out);
+          }
+        }
+        if (!parts.length){
+          for (p = 0; p < state.outputs.length; p++){
+            if (state.outputs[p].out){ parts.push(state.outputs[p].out); }
+          }
+        }
+        finalText = parts.join('\n\n');
+      }
+
+      cb(null, {
+        final: finalText,
+        outputs: state.outputs,
+        totalTok: state.totalTok,
+        totalCost: state.totalCost,
+        failedCount: state.failedCount
+      });
+    });
+  }
+
+  /* ---------- selfTest ---------- */
+
+  function selfTest(cb){
+    var t0 = new Date().getTime();
+    call({ model: MODELS['Haiku'], system: '', user: 'Reply with exactly: ok', maxTokens: 8 }, function(err, res){
+      if (err){ cb(err); return; }
+      var ms = new Date().getTime() - t0;
+      cb(null, ms);
+    });
+  }
+
+  /* ---------- expose ---------- */
+
+  window.SideEngine = {
+    VERSION: '0.2.0',
+    MODELS: MODELS,
+    COST: COST,
+    hasKey: hasKey,
+    getKey: getKey,
+    setKey: setKey,
+    clearKey: clearKey,
+    call: call,
+    plan: plan,
+    runGraph: runGraph,
+    selfTest: selfTest
+  };
+
+})();
+
+</script>
 <!-- ==SCRIPT-MARK== -->

@@ -10,8 +10,9 @@ BIN_DIR="${SIDE_BIN:-$HOME/.local/bin}"
 echo "-> detecting platform... $(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m)"
 echo "-> installing Side"
 
-mkdir -p "$SIDE_HOME/app" "$BIN_DIR"
+mkdir -p "$SIDE_HOME/app" "$SIDE_HOME/bin" "$BIN_DIR"
 curl -fsSL "$BASE/app/index.html" -o "$SIDE_HOME/app/index.html"
+curl -fsSL "$BASE/bin/side-serve.py" -o "$SIDE_HOME/bin/side-serve.py"
 curl -fsSL "$BASE/bin/side" -o "$BIN_DIR/side"
 chmod +x "$BIN_DIR/side"
 
