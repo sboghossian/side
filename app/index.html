@@ -2395,12 +2395,14 @@ textarea.inp{resize:vertical;min-height:74px;line-height:1.5}
     <div class="lp-wrap lp2-wrap">
       <span class="lp-eyebrow lp-rev"><span class="lp-dot"><span class="i" data-ic="sparkle"></span></span> Side &middot; your AI sidekick</span>
 
-      <h1 class="lp-h1 lp2-h1 lp-rev d1">99% of people don&rsquo;t code, that&rsquo;s a fact.<br><span class="lp-hh-grad">Side is here to change that forever.</span></h1>
+      <h1 class="lp-h1 lp2-h1 lp-rev d1">You already talk to AI.<br><span class="lp-hh-grad">Now give it a real job.</span></h1>
 
       <div class="lp2-desc lp-rev d2">
-        <p>AI is moving faster than anyone can keep up with, and most people still can&rsquo;t see how it works. You can chat with a model, but you never see how agents think, how they plan, or how they work together. So people either trust AI blindly or stay a little scared of it. There&rsquo;s no simple place to hand AI one prompt, watch it work, and understand what it did.</p>
-        <p>Side turns one plain-English prompt into a shipped result you can watch. Connect your models, tools, and APIs once. Type what you want, and Side shows you the plan first &mdash; the goal, the steps, the agents, the cost &mdash; before anything runs. A fleet of agents then works on a visual canvas, and anything risky stops at a gate that shows you the exact change. Open source, on your machine. Think n8n for the AI age: you learn by watching, not reading.</p>
+        <p>Right now, AI is a black box. You type a question, an answer pops out, and you have no clue what happened in between. So you trust it with small stuff and stay a little scared of the rest. And every word around it sounds designed to keep you out: agents, prompts, tokens, APIs.</p>
+        <p>Side opens the box. Say what you want in plain words: plan the birthday party, turn my recipes into a website, sort my inbox every morning. Side splits the job into steps on a board, like sticky notes, and gives each step to its own AI helper. You watch them work. You drag things around like in Notion. Anything important stops and waits for your yes. And around your third build, it clicks. Agent, memory, prompt. Not scary. You&rsquo;ve watched them do their job.</p>
+        <p>Already deep into AI? Side is the control room you&rsquo;re missing. Your models, keys, memory, agents and schedules on one canvas, across every machine you own. Start on easy mode, then go as deep as you want: routing, budgets, gates, a brain that learns you. Simple enough for your first agent. Deep enough for your hundredth.</p>
       </div>
+      <div class="lpj lp-rev d2" id="lpj" aria-label="Tap a word to translate it"><span class="lpj-lbl">the words, translated</span><button type="button" class="lpj-c" data-f="agent" data-b="one helper, one job"><span>agent</span></button><button type="button" class="lpj-c" data-f="prompt" data-b="what you ask for"><span>prompt</span></button><button type="button" class="lpj-c" data-f="memory" data-b="what it remembers about you"><span>memory</span></button><button type="button" class="lpj-c" data-f="fleet" data-b="your helpers, working as a team"><span>fleet</span></button><button type="button" class="lpj-c" data-f="MCP" data-b="the plug that connects your tools"><span>MCP</span></button></div>
 
       <div class="lps lp-rev d3" id="lps">
   <div class="lps-rail" id="lps-rail" role="tablist" aria-label="How Side works, six steps">
@@ -2522,7 +2524,7 @@ textarea.inp{resize:vertical;min-height:74px;line-height:1.5}
 </div>
 
 
-      <p class="lp2-for lp-rev d4">Side is for anyone who wants to understand AI, not just use it &mdash; students, operators, founders, anyone who feels behind and wants to catch up. No code needed. You hand Side one prompt, watch the fleet plan and work, and approve what matters. You come away able to control AI instead of being rushed along by it. That&rsquo;s why I built it.</p>
+      <p class="lp2-for lp-rev d4">Side is for anyone who uses AI every day but has never seen inside it, and for the people who practically live in there. No code needed, no ceiling either. You ask, you watch, you approve what matters. After a week you understand the thing everyone keeps talking about. That&rsquo;s why I built it.</p>
 
       <p class="lp2-gh lp-rev d5"><a href="https://github.com/sboghossian/side" target="_blank" rel="noopener"><span class="i" data-ic="github"></span> github.com/sboghossian/side</a><span class="lp2-gh-sep">&middot;</span>MIT<span class="lp2-gh-sep">&middot;</span>open source</p>
     </div>
@@ -17476,6 +17478,27 @@ window.SideEco=(function(){
   }
   window.buildBrainView=buildBrainView;
   wireGlobal();
+})();
+</script>
+<style id="lpj-style">
+.lpj{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:16px auto 0;max-width:760px}
+.lpj-lbl{font-family:var(--mono);font-size:.66rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-right:2px}
+.lpj-c{font-family:var(--mono);font-size:.78rem;padding:7px 13px;border-radius:100px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);cursor:pointer;transition:border-color .18s,box-shadow .18s,transform .18s}
+.lpj-c:hover{border-color:var(--accent-line);transform:translateY(-1px);box-shadow:var(--shadow-sm)}
+.lpj-c.on{background:var(--grad-warm);border-color:transparent;color:#fff;font-family:var(--sans);font-weight:560}
+@media(max-width:720px){.lpj{gap:6px}.lpj-c{font-size:.72rem;padding:6px 11px}}
+</style>
+<script>
+/* module: lpj (jargon flipper) */
+(function(){
+  function init(){
+    var host=document.getElementById('lpj');if(!host)return;
+    function flip(c,on){var s=c.querySelector('span');if(!s)return;c.classList.toggle('on',!!on);s.textContent=on?c.getAttribute('data-b'):c.getAttribute('data-f');}
+    host.addEventListener('click',function(e){var c=e.target.closest('.lpj-c');if(!c)return;c.__lock=!c.__lock;flip(c,c.__lock);});
+    host.addEventListener('mouseover',function(e){var c=e.target.closest('.lpj-c');if(c&&!c.__lock)flip(c,true);});
+    host.addEventListener('mouseout',function(e){var c=e.target.closest('.lpj-c');if(c&&!c.__lock)flip(c,false);});
+  }
+  if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',init);}else{init();}
 })();
 </script>
 <style id="warm-brand">
