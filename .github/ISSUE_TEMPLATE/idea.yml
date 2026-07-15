@@ -1,0 +1,14 @@
+name: Idea
+description: Something Side should do
+labels: [idea]
+body:
+  - type: textarea
+    attributes:
+      label: The idea
+      description: What should Side do, and who is it for?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: How it might look
+      description: A sketch, a screenshot of prior art, or a sentence.

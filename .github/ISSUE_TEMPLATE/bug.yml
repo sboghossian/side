@@ -1,0 +1,27 @@
+name: Bug report
+description: Something broke or looks off
+labels: [bug]
+body:
+  - type: textarea
+    attributes:
+      label: What happened?
+      description: What did you see, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. side
+        2. open the fleet board
+        3. ...
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Environment
+      placeholder: macOS 15 / Chrome 132 / side 0.1.0
+  - type: textarea
+    attributes:
+      label: Screenshot
+      description: A picture is worth a thousand nodes.
