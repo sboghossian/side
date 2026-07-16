@@ -150,6 +150,19 @@ Bring your own Anthropic API key — paste it in onboarding, or press `⌘K → 
 
 Your key lives in your browser's local storage and is sent to exactly one place: `api.anthropic.com`. No key? Everything runs as the safe simulation — same product, demo fuel.
 
+## The agent tier — read + plan (v0.8 alpha)
+
+Have [Claude Code](https://claude.com/claude-code) installed and logged in? Side detects it and a fleet's nodes stop *describing* work and start **reading your real world** to propose it. When a node runs, the `side` daemon spawns a headless Claude Code process that:
+
+- runs **read-only** — limited to read tools (`Read`, `Grep`, `Glob`); no write, edit, or shell tool is available, so it *cannot* modify anything even if asked (we tested it adversarially — it won't),
+- works inside a **throwaway sandbox** (`~/Side/runs/<fleet>/workspace`), never your wider disk,
+- uses **your existing Claude Code login** — no separate API key,
+- and hands its **proposal to your gate**. Nothing is applied. You read what it would do and approve.
+
+This is deliberately the *read-and-propose* half. Letting an approved node actually apply edits — one gated action at a time — is the next milestone, behind its own approval. The promise holds either way: **nothing irreversible without your yes.**
+
+No Claude Code? The tier is simply off and Side behaves exactly as before (browser-direct engine with a key, or the demo sim).
+
 ## Status & roadmap
 
 - [x] The whole experience: canvas, routing, fleet board, gates, cost, templates, onboarding, ⌘K
@@ -163,7 +176,9 @@ Your key lives in your browser's local storage and is sent to exactly one place:
 - [x] **The Brain** — a living knowledge graph in your sidebar: folder discovery, nurture loops, sources, learnings
 - [x] **Learn-as-you-go** — first-run tour, plain-language glossary (`⌘K → Learn Side`), educational empty states
 - [x] **Ecosystem search (preview)** — template search surfaces installable open-source components
-- [ ] **v0.8 — the engine grows up: Side becomes an MCP client.** Real tools (GitHub, Gmail, PostHog, Linear, a browser…) via the open Model Context Protocol instead of a thousand hand-built connectors, durable/resumable runs, and multi-provider keys (GPT, Gemini, local)
+- [x] **v0.8 alpha — the agent tier (read + plan).** With Claude Code installed, a fleet's nodes read your real files and propose work through a headless, read-only, sandboxed process; the proposal lands at your gate (see [The agent tier](#the-agent-tier--read--plan-v08-alpha) above)
+- [ ] **v0.8 beta — the acting tier.** Let an approved node apply edits, one gated action at a time (per-action permission bridge)
+- [ ] **MCP client.** Real tools (GitHub, Gmail, PostHog, Linear, a browser…) via the open Model Context Protocol, durable/resumable runs, multi-provider keys (GPT, Gemini, local)
 - [ ] Skills: export/import a fleet as a shareable one-click Skill
 - [ ] Side World: public profiles + leaderboard
 

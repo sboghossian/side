@@ -3166,6 +3166,14 @@ function initOnb(){
         else{OB2.rowDone(r,{soft:true,label:'No local model found',note:'add one later'});}
       });
     });
+    T(760,function(){
+      var r=OB2.row('ob2-r-agt','agent','Checking for Claude Code');
+      if(OB2.agentDetect){OB2.agentDetect(function(av){
+        if(av){OB2.rowDone(r,{label:'Claude Code',note:'read + plan tier ready'});}
+        else{OB2.rowDone(r,{soft:true,label:'Claude Code',note:'install Claude Code for the read+plan tier'});}
+      });}
+      else{OB2.rowDone(r,{soft:true,label:'Claude Code',note:'read+plan tier optional'});}
+    });
     T(980,function(){var r=OB2.row('ob2-r-eng','bolt','Run engine');T(520,function(){OB2.rowDone(r,{note:'online'});});});
     T(1380,function(){var r=OB2.row('ob2-r-cv','grid','Canvas + fleet board');T(1000,function(){OB2.rowDone(r,{note:'ready'});});});
   }
@@ -3609,10 +3617,12 @@ function initCanvasModes(){
 var running=false;
 function runEngine(){
   if(running)return;
+  if(window.sideAgentStopAll){try{window.sideAgentStopAll();}catch(eSA){}}
   var gR=curGraph();
   if(window.sideLintGate&&window.sideLintGate(gR,curSlug,function(){runEngine();}))return;
-  if(sideEngineOn()&&window.wfStartRun&&CUR_VIEW==='canvas'&&$('#viewport')&&gR&&gR.nodes&&gR.nodes.length){
+  if((window.sideRealCapable?window.sideRealCapable():sideEngineOn())&&window.wfStartRun&&CUR_VIEW==='canvas'&&$('#viewport')&&gR&&gR.nodes&&gR.nodes.length){
     running=true;var rbtn=$('#run-btn');if(rbtn){rbtn.classList.add('running');var rl0=rbtn.querySelector('.rl');if(rl0)rl0.textContent='Running';}
+    gR.slug=curSlug;
     var steps=gR.nodes.map(function(n){return {id:n.id,name:n.title};});
     window.wfStartRun(sideRunHost(),{auto:false,steps:steps,onView:function(){
       var hasGate=gR.nodes.filter(function(n){return nodeKind(n)==='gate';}).length>0;
@@ -4980,6 +4990,7 @@ function sideKeySectionHTML(){
     '<input class="inp" id="eng-key" type="password" placeholder="'+(on?'key saved \u2014 paste to replace':'sk-ant-...')+'" spellcheck="false" autocomplete="off" style="width:100%">'+
     '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-primary btn-sm" id="eng-save">Save key</button><button class="btn btn-soft btn-sm" id="eng-test">Test</button>'+(on?'<button class="btn btn-soft btn-sm" id="eng-clear">Remove</button>':'')+'</div>'+
     '<div class="mono" id="eng-status" style="font-size:.68rem;color:var(--ink-3);margin-top:8px">'+(on?'Engine live: plans and runs use real Claude calls.':'Without a key, everything runs as a safe simulation.')+'</div>'+
+    (window.sideAgentTierHTML?window.sideAgentTierHTML():'')+
     '<button class="wd-open" id="eng-pipeline" style="margin-top:12px">'+svg('fork')+' Decision tree &mdash; how every prompt flows</button></div>';
 }
 document.addEventListener('click',function(e){
@@ -14097,6 +14108,16 @@ img.fbshot{display:block;width:100%;height:auto;background:var(--surface-2)}
 
   function runApiNode(node, system, userContent, maxTokens, accumulate, hooksObj, state, doneCb){
     hooksObj.onNodeStart(node);
+    if (!hasKey()){
+      var synth = nodeName(node) + ': ' + (node.sub ? node.sub : 'planned this step') + '. (offline outline - add an API key or the read+plan agent tier for the full version.)';
+      node.out = synth;
+      node.realTok = 0;
+      node.realCost = 0;
+      if (accumulate){ state.context = truncateContext(state.context + '\n\n[' + nodeName(node) + ']\n' + synth); }
+      state.outputs.push({ id: node.id, title: node.title, out: node.out, tok: 0, cost: 0 });
+      setTimeout(function(){ hooksObj.onNodeDone(node); doneCb(false); }, 220);
+      return;
+    }
     call({ model: resolveModel(node.model), system: system, user: userContent, maxTokens: maxTokens }, function(err, res){
       if (err){
         node.out = '(failed: ' + err.message + ')';
@@ -14140,7 +14161,7 @@ img.fbshot{display:block;width:100%;height:auto;background:var(--surface-2)}
     var onLog = hooks.onLog || function(){};
     var hooksObj = { onNodeStart: onNodeStart, onNodeDone: onNodeDone, onLog: onLog };
 
-    if (!hasKey()){
+    if (!hasKey() && !(window.sideAgentOn && window.sideAgentOn())){
       cb(new Error('No API key set'));
       return;
     }
@@ -14235,7 +14256,14 @@ img.fbshot{display:block;width:100%;height:auto;background:var(--surface-2)}
           (function(node){
             var sys = 'You are the "' + nodeName(node) + '" agent in a fleet. Produce your actual deliverable for your slice of the goal, concise but real (<=350 words). Output the deliverable itself, no preamble.';
             var userContent = 'GOAL: ' + state.goal + '\n\nCONTEXT SO FAR:\n' + state.context;
-            runApiNode(node, sys, userContent, 1500, false, hooksObj, state, function(){ oneDone(); });
+            if (window.sideAgentOn && window.sideAgentOn() && typeof window.SideAgentAnalyze === 'function'){
+              window.SideAgentAnalyze(node, state, graph, hooksObj, function(ok){
+                if (ok){ oneDone(); return; }
+                runApiNode(node, sys, userContent, 1500, false, hooksObj, state, function(){ oneDone(); });
+              });
+            } else {
+              runApiNode(node, sys, userContent, 1500, false, hooksObj, state, function(){ oneDone(); });
+            }
           })(agentNodes[j]);
         }
       });
@@ -14263,6 +14291,7 @@ img.fbshot{display:block;width:100%;height:auto;background:var(--surface-2)}
         var summary = 'Fleet run complete: ' + state.outputs.length + ' nodes executed, '
           + state.totalTok + ' tokens, $' + state.totalCost.toFixed(4) + ' est.';
         if (state.failedCount > 0){ summary += ' (' + state.failedCount + ' failed)'; }
+        if (window.sideAgentOn && window.sideAgentOn()){ summary += ' Proposals came from the read+plan agent tier (read-only; no changes applied).'; }
         reportNode.out = summary;
         reportNode.realTok = 0;
         reportNode.realCost = 0;
@@ -20526,6 +20555,15 @@ setTimeout(initEntry,600);
       fetch('http://localhost:11434/',{mode:'no-cors',cache:'no-store'}).then(function(){clearTimeout(t);fin(true);})['catch'](function(){clearTimeout(t);fin(false);});
     }catch(e){clearTimeout(t);fin(false);}
   };
+  /* REAL daemon check for the read+plan tier: GET /api/agent/detect; 1.5s timeout race; fails in the artifact */
+  OB2.agentDetect=function(cb){
+    var done=false;function fin(av,ver){if(done)return;done=true;cb(av,ver);}
+    if(window.SideAgent&&window.SideAgent.available){fin(true,window.SideAgent.version);return;}
+    var t=setTimeout(function(){fin(false);},1500);
+    try{
+      fetch('/api/agent/detect',{cache:'no-store'}).then(function(r){return r&&r.ok?r.json():null;}).then(function(j){clearTimeout(t);if(j&&j.ok&&j.available){fin(true,j.version);}else{fin(false);}})['catch'](function(e){clearTimeout(t);fin(false);});
+    }catch(e){clearTimeout(t);fin(false);}
+  };
   OB2.row=function(id,iconKey,label){
     var list=document.getElementById('ob2-check');if(!list)return null;
     var ex=document.getElementById(id);if(ex)return ex;
@@ -20581,6 +20619,230 @@ setTimeout(initEntry,600);
     var c=0;var iv=setInterval(function(){c+=Math.max(1,Math.round((127-c)/6));if(c>=127){c=127;clearInterval(iv);}if(cap)cap.innerHTML=''+c;},95);
   };
   window.OB2=OB2;
+})();
+</script>
+<style id="agent-tier">
+/* read + plan agent tier status line (settings/engine section) */
+.agt-tier{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:10px;padding:8px 10px;border:1px solid var(--line);border-radius:9px;font-size:.68rem;color:var(--ink-3);}
+.agt-tier .agt-dot{width:7px;height:7px;border-radius:50%;background:var(--ink-3);opacity:.45;flex:0 0 auto;}
+.agt-tier.on .agt-dot{background:var(--good);opacity:1;}
+.agt-tier .agt-lbl{font-weight:600;color:var(--ink-2);}
+.agt-tier .agt-st{margin-left:auto;font-weight:600;}
+.agt-tier.on .agt-st{color:var(--good);}
+.agt-tier .agt-note{flex:1 1 100%;color:var(--ink-3);line-height:1.4;}
+</style>
+<script>
+/* module: agt */
+/* ============ Side read+plan agent tier (safe, read-only proposals) ============ */
+/* Talks to the local Side daemon: GET /api/agent/detect, POST /api/agent/analyze, */
+/* GET /api/agent/poll, POST /api/agent/stop. This tier READS the user's files and  */
+/* PROPOSES work. It applies ZERO edits. Everything degrades silently when the       */
+/* daemon is absent (artifact / demo). ES5 only. Module surface via window.*.        */
+(function(){
+  'use strict';
+
+  /* window.SideAgent starts unavailable so sideAgentOn() is safe before detect runs */
+  if (!window.SideAgent){ window.SideAgent = { available: false, version: null, mode: 'plan' }; }
+
+  var POLL_MS = 1500;
+  var MAX_POLLS = 160;              /* ~4 min ceiling so a job never hangs the run */
+  var DETECT_TIMEOUT = 1500;
+  var CALL_TIMEOUT = 15000;
+  var STOP_TIMEOUT = 4000;
+
+  /* ---------- XHR helper (mirrors SideEngine.call: XHR + timeout + JSON) ---------- */
+  function xhrJSON(method, url, bodyObj, timeoutMs, cb){
+    var xhr, settled = false;
+    function fin(err, data){ if (settled){ return; } settled = true; cb(err, data); }
+    try { xhr = new XMLHttpRequest(); } catch (eX){ fin(new Error('XMLHttpRequest unavailable')); return; }
+    try {
+      xhr.open(method, url, true);
+      xhr.timeout = timeoutMs ? timeoutMs : 8000;
+      if (bodyObj){ xhr.setRequestHeader('content-type', 'application/json'); }
+    } catch (eO){ fin(new Error('Request setup failed')); return; }
+    xhr.ontimeout = function(){ fin(new Error('timeout')); };
+    xhr.onerror = function(){ fin(new Error('network error')); };
+    xhr.onload = function(){
+      var status = xhr.status;
+      var raw = xhr.responseText || '';
+      var parsed = null;
+      try { parsed = JSON.parse(raw); } catch (eP){ parsed = null; }
+      if (status < 200 || status >= 300){
+        var e2 = new Error('http ' + status);
+        e2.status = status; e2.data = parsed;
+        fin(e2); return;
+      }
+      fin(null, parsed);
+    };
+    var payload = null;
+    if (bodyObj){
+      try { payload = JSON.stringify(bodyObj); } catch (eJ){ fin(new Error('encode failed')); return; }
+    }
+    try { xhr.send(payload); } catch (eS){ fin(new Error('send failed')); }
+  }
+
+  /* ---------- capability flags ---------- */
+  function sideAgentOn(){ return !!(window.SideAgent && window.SideAgent.available); }
+  function sideHasKey(){
+    try { return !!(window.SideEngine && window.SideEngine.hasKey && window.SideEngine.hasKey()); }
+    catch (e){ return false; }
+  }
+  function sideRealCapable(){ return sideHasKey() || sideAgentOn(); }
+  window.sideAgentOn = sideAgentOn;
+  window.sideRealCapable = sideRealCapable;
+
+  /* ---------- boot detect (one XHR; fails silently in the artifact) ---------- */
+  function detect(){
+    xhrJSON('GET', '/api/agent/detect', null, DETECT_TIMEOUT, function(err, data){
+      if (err || !data || !data.ok){
+        window.SideAgent = { available: false, version: null, mode: 'plan' };
+        return;
+      }
+      window.SideAgent = {
+        available: !!data.available,
+        version: data.version ? data.version : null,
+        mode: data.mode ? data.mode : 'plan'
+      };
+    });
+  }
+
+  /* ---------- in-flight job tracking + stop ---------- */
+  var ACTIVE = {};
+  function trackJob(job){ if (job){ ACTIVE[job] = true; } }
+  function untrackJob(job){ if (job && ACTIVE[job]){ delete ACTIVE[job]; } }
+  function stopJob(job){
+    if (!job){ return; }
+    xhrJSON('POST', '/api/agent/stop', { job: job }, STOP_TIMEOUT, function(){});
+    untrackJob(job);
+  }
+  function stopAll(){
+    var k;
+    for (k in ACTIVE){
+      if (ACTIVE.hasOwnProperty(k)){
+        xhrJSON('POST', '/api/agent/stop', { job: k }, STOP_TIMEOUT, function(){});
+      }
+    }
+    ACTIVE = {};
+  }
+  window.sideAgentStopAll = stopAll;
+
+  /* ---------- helpers ---------- */
+  function nodeLabel(node){
+    if (!node){ return 'node'; }
+    if (node.title){ return node.title; }
+    if (node.id){ return String(node.id); }
+    if (node.type){ return node.type; }
+    return 'node';
+  }
+  function buildContext(state){
+    var ctx = (state && state.context) ? ('' + state.context) : '';
+    try {
+      if (window.SideCtx && window.SideCtx.chipsText){
+        var cc = window.SideCtx.chipsText(state ? state.goal : '');
+        if (cc){ ctx = cc + '\n\n' + ctx; }
+      }
+    } catch (e){}
+    if (ctx.length > 2000){ ctx = ctx.substring(ctx.length - 2000); }
+    return ctx;
+  }
+
+  /* ---------- per-node analysis via a real read+plan agent job ----------
+     Returns cb(true) if the node was handled (node.out set, hooks fired).
+     Returns cb(false) on 429 / 503 / error / timeout so the caller can fall
+     back to the existing text call (or synthetic line if no key). Never hangs. */
+  function analyze(node, state, graph, hooks, cb){
+    hooks = hooks || {};
+    var onStart = hooks.onNodeStart || function(){};
+    var onDone = hooks.onNodeDone || function(){};
+    var onLog = hooks.onLog || function(){};
+
+    var goal = (state && state.goal) ? state.goal : '';
+    var body = (node && node.body) ? node.body : ((node && node.sub) ? node.sub : '');
+    var task = nodeLabel(node) + '\n' + body + '\nGoal: ' + goal;
+    var slug = (graph && graph.slug) ? graph.slug : '';
+    var payload = { task: task, slug: slug, node: nodeLabel(node), context: buildContext(state) };
+
+    var finished = false;
+    function done(ok){ if (finished){ return; } finished = true; cb(!!ok); }
+
+    onStart(node);
+    onLog('read+plan agent analyzing "' + nodeLabel(node) + '" (read-only)...');
+
+    xhrJSON('POST', '/api/agent/analyze', payload, CALL_TIMEOUT, function(err, data){
+      if (err || !data || !data.ok || !data.job){ done(false); return; }
+      var job = data.job;
+      trackJob(job);
+      var polls = 0;
+
+      function poll(){
+        if (finished){ return; }
+        polls++;
+        if (polls > MAX_POLLS){ stopJob(job); done(false); return; }
+        xhrJSON('GET', '/api/agent/poll?job=' + encodeURIComponent(job), null, CALL_TIMEOUT, function(pErr, pData){
+          if (finished){ return; }
+          if (pErr || !pData || !pData.ok){ untrackJob(job); done(false); return; }
+          var st = pData.status;
+          var out = (pData.output != null) ? ('' + pData.output) : '';
+          if (st === 'running'){
+            if (out){ node.out = out; }   /* progressive: the .rlg peek reads node.out live */
+            setTimeout(poll, POLL_MS);
+            return;
+          }
+          if (st === 'done'){
+            untrackJob(job);
+            node.out = 'PROPOSAL (read-only - approve to run):\n' + (out ? out : '(no proposal returned)');
+            node.realTok = 0;
+            node.realCost = 0;
+            if (state && state.outputs){
+              state.outputs.push({ id: node.id, title: node.title, out: node.out, tok: 0, cost: 0 });
+            }
+            onDone(node);   /* existing onNode progress path -> designer live bubble updates */
+            done(true);
+            return;
+          }
+          /* status 'error' or anything unknown -> fall back */
+          untrackJob(job);
+          done(false);
+        });
+      }
+      setTimeout(poll, POLL_MS);
+    });
+  }
+  window.SideAgentAnalyze = analyze;
+
+  /* ---------- settings tier status line (honest copy) ---------- */
+  window.sideAgentTierHTML = function(){
+    var on = sideAgentOn();
+    var ver = (window.SideAgent && window.SideAgent.version) ? (' ' + window.SideAgent.version) : '';
+    return '<div class="agt-tier' + (on ? ' on' : '') + '">'
+      + '<span class="agt-dot"></span>'
+      + '<span class="agt-lbl">Read + plan agent tier</span>'
+      + '<span class="agt-st">' + (on ? ('ready' + ver) : 'install Claude Code') + '</span>'
+      + '<span class="agt-note">Reads your files and proposes changes for your approval. It never edits &mdash; applying changes lands in a later version.</span>'
+      + '</div>';
+  };
+
+  /* ---------- STOP hooks: wf stop/reject/clear + tab close ---------- */
+  var clearWrapped = false;
+  function wrapClear(){
+    if (clearWrapped){ return; }
+    var orig = window.wfClear;
+    if (typeof orig !== 'function'){ return; }
+    clearWrapped = true;
+    window.wfClear = function(){
+      try { stopAll(); } catch (e){}
+      return orig.apply(this, arguments);
+    };
+  }
+  wrapClear();
+  if (window.addEventListener){
+    window.addEventListener('load', function(){ wrapClear(); }, false);
+    window.addEventListener('beforeunload', function(){ try { stopAll(); } catch (e){} }, false);
+  }
+
+  /* ---------- go ---------- */
+  detect();
+
 })();
 </script>
 <style id="warm-brand">
