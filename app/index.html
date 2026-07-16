@@ -20436,438 +20436,93 @@ setTimeout(initEntry,600);
    unlike the existing animated .h2-hi .w / .lp-hh-grad, to keep the
    canvas's working surface calmer than the marketing/home moments ------- */
 </style>
-<!-- ==SCRIPT-MARK== -->
-<style>
-/* module: fork-compare (.fkc-) */
-/* ===== Fork & Compare (.fkc-) ===== */
-.fkc-fork-mi{color:var(--accent);}
-.fkc-cmp-mi{color:var(--sky);}
+<style id="canvas-polish">
+/* ===========================================================================
+   CANVAS POLISH -- additive visual overrides only. Loaded after warm-brand
+   so equal-specificity selectors win by source order -- no !important used.
+   Color / background / border / shadow / filter / opacity / transition /
+   transform-easing only. No layout, size, display or position VALUE changes.
+   Brings the mined node-graph "reasoning-trace" richness into the canvas
+   LOOK while staying inside this file's warm-light coral system (a dark
+   surface would fight the rest of the app -- the accent stays one coral pop).
+   Every selector below was verified present in agent-build.html by grep.
+   =========================================================================== */
 
-.fkc-pick{position:fixed;top:62px;right:14px;z-index:61;min-width:236px;max-width:270px;background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;box-shadow:var(--shadow-lg);padding:8px;font-family:var(--sans);}
-.fkc-pick-hd{font-size:11px;color:var(--muted);padding:4px 8px 8px;text-transform:uppercase;letter-spacing:.03em;}
-.fkc-pick-item{display:flex;align-items:center;gap:9px;width:100%;border:none;background:transparent;padding:8px 9px;border-radius:8px;cursor:pointer;text-align:left;font-family:var(--sans);color:var(--ink);}
-.fkc-pick-item:hover{background:var(--surface-2);}
-.fkc-pick-dot{width:9px;height:9px;border-radius:50%;background:var(--fkc-c,var(--accent));flex:0 0 auto;}
-.fkc-pick-name{font-size:13px;font-weight:600;color:var(--ink);}
-.fkc-pick-tag{font-size:11px;color:var(--ink-3);margin-left:auto;white-space:nowrap;padding-left:8px;}
-.fkc-pick-empty{padding:10px 8px;font-size:12px;color:var(--ink-3);}
+/* one considered easing for interactive chrome + canvas motion */
+:root{--ease-ui:cubic-bezier(.22,.61,.36,1)}
+.btn,.tbtn,.chip,.tb-ic,.run-btn,.zoomer button,.node-plug,.nlegend-t,
+.node-acts button,.pf-next,.install-row .cpy,.cmode button{
+  transition-timing-function:var(--ease-ui);
+}
 
-.fkc-compare{position:absolute;inset:0;z-index:55;background:var(--paper);display:flex;flex-direction:column;}
-.fkc-cmp-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line);background:var(--surface);flex:0 0 auto;}
-.fkc-cmp-h{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;color:var(--ink);min-width:0;}
-.fkc-cmp-h svg{width:16px;height:16px;flex:0 0 auto;}
-.fkc-cmp-sub{font-weight:400;font-style:normal;font-size:12px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:380px;}
-.fkc-cmp-x{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;}
-.fkc-cmp-x:hover{background:var(--surface-3);color:var(--ink);}
-.fkc-cmp-x svg{width:14px;height:14px;}
-.fkc-cmp-cols{flex:1;display:flex;gap:1px;background:var(--line);overflow:auto;min-height:0;}
-.fkc-col{flex:1 1 0;min-width:260px;display:flex;flex-direction:column;background:var(--paper);min-height:0;}
-.fkc-col-head{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line);font-weight:600;font-size:13px;color:var(--ink);flex:0 0 auto;}
-.fkc-col-dot{width:9px;height:9px;border-radius:50%;background:var(--fkc-c,var(--accent));flex:0 0 auto;}
-.fkc-col-body{flex:1;overflow:auto;padding:14px 16px;font-size:13px;line-height:1.55;color:var(--ink-2);min-height:0;}
-.fkc-col-out{white-space:pre-wrap;word-wrap:break-word;}
-.fkc-col-think{display:none;align-items:center;gap:5px;padding-top:2px;}
-.fkc-col-think.on{display:inline-flex;}
-.fkc-col-think i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:fkcpulse 1.1s infinite;}
-.fkc-col-think i:nth-child(2){animation-delay:.15s;}
-.fkc-col-think i:nth-child(3){animation-delay:.3s;}
-@keyframes fkcpulse{0%,60%,100%{opacity:.25;transform:translateY(0);}30%{opacity:1;transform:translateY(-2px);}}
-.fkc-col-meta{padding:0 16px 10px;font-family:var(--mono);font-size:11px;color:var(--ink-3);flex:0 0 auto;}
-.fkc-col-pick{margin:0 16px 14px;padding:9px 12px;border-radius:9px;border:1px solid var(--accent-line);background:var(--accent-soft);color:var(--ink);font-size:12.5px;font-weight:600;cursor:pointer;font-family:var(--sans);flex:0 0 auto;}
-.fkc-col-pick:hover:not(:disabled){background:var(--accent);color:var(--paper);}
-.fkc-col-pick:disabled{opacity:.4;cursor:not-allowed;}
-@media(prefers-reduced-motion:reduce){.fkc-col-think i{animation:none;}}
+/* ---- node card: richer surface + unified eased motion ------------------- */
+.node{
+  transition:transform .2s var(--ease-ui),box-shadow .2s var(--ease-ui),
+             border-color .2s var(--ease-ui),filter .25s var(--ease-ui),
+             opacity .25s var(--ease-ui);
+  box-shadow:var(--shadow-sm),0 1px 0 rgba(255,255,255,.5) inset;
+}
+/* left rail: node-colour gradient instead of a flat bar */
+.node::before{
+  background:linear-gradient(180deg,var(--nc,var(--accent)),
+             color-mix(in srgb,var(--nc,var(--accent)) 48%,transparent));
+}
+/* icon chip gains soft node-colour depth */
+.node-h .nic{
+  box-shadow:0 1px 0 rgba(255,255,255,.28) inset,
+             0 2px 7px color-mix(in srgb,var(--nc,var(--accent)) 32%,transparent);
+}
+/* hover: eased lift keeps a soft glow tinted by the node's own colour */
+.node:hover{
+  box-shadow:var(--shadow-md),
+             0 10px 26px color-mix(in srgb,var(--nc,var(--accent)) 15%,transparent);
+}
+
+/* ---- active / running node: gentle breathing glow ----------------------- */
+@keyframes nodePulseGlow{
+  0%,100%{box-shadow:var(--shadow-sm),
+    0 0 0 3px color-mix(in srgb,var(--nc,var(--accent)) 15%,transparent),
+    0 6px 22px color-mix(in srgb,var(--nc,var(--accent)) 13%,transparent)}
+  50%{box-shadow:var(--shadow-sm),
+    0 0 0 4px color-mix(in srgb,var(--nc,var(--accent)) 24%,transparent),
+    0 9px 30px color-mix(in srgb,var(--nc,var(--accent)) 20%,transparent)}
+}
+.node.run{animation:nodePulseGlow 2.1s var(--ease-ui) infinite}
+@media(prefers-reduced-motion:reduce){
+  .node.run{animation:none;
+    box-shadow:var(--shadow-sm),0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent)}
+}
+
+/* ---- edges: cleaner active "reasoning-trace" lines ---------------------- */
+.bead.hot{filter:drop-shadow(0 0 3px color-mix(in srgb,var(--accent) 45%,transparent))}
+.bead.dash{filter:drop-shadow(0 0 3px color-mix(in srgb,var(--accent) 40%,transparent))}
+
+/* ---- run button: subtle accent lift ------------------------------------- */
+.run-btn{box-shadow:var(--shadow-sm),0 4px 14px color-mix(in srgb,var(--accent) 18%,transparent)}
+.run-btn:hover{box-shadow:var(--shadow-sm),0 6px 18px color-mix(in srgb,var(--accent) 26%,transparent)}
+
+/* ---- canvas surface: a more considered depth under the dot grid --------- */
+.viewport{
+  background-image:
+    radial-gradient(circle,color-mix(in srgb,var(--ink) 7%,transparent) 1px,transparent 1px),
+    radial-gradient(1200px 760px at 50% -6%,color-mix(in srgb,var(--accent) 4%,transparent),transparent 62%),
+    linear-gradient(180deg,var(--surface),color-mix(in srgb,var(--surface-2) 55%,var(--surface)));
+  background-size:24px 24px,100% 100%,100% 100%;
+  background-position:0 0,0 0,0 0;
+  background-repeat:repeat,no-repeat,no-repeat;
+}
+
+/* ---- centre composer: a hair more premium ------------------------------- */
+.greet .cpb{
+  box-shadow:var(--shadow-md),0 24px 60px color-mix(in srgb,var(--accent) 6%,transparent);
+}
+
+/* ---- landing: felt-not-seen easing consistency on interactive chrome ---- */
+.install-row{transition:border-color .2s var(--ease-ui),box-shadow .2s var(--ease-ui)}
+.install-row:hover{border-color:var(--accent-line);box-shadow:var(--shadow-md)}
+
+/* reduced motion: the only added animation is nodePulseGlow, already guarded
+   above; every other addition is a static shadow / colour, nothing to gate. */
 </style>
-<script>
-/* module: fork-compare */
-(function(){
-"use strict";
-if(window.__fkcForkCompare)return;
-window.__fkcForkCompare=true;
-
-/* ---- verified host bridges only (see INTEGRATION for window.SideFxBridge) ---- */
-function S(k){try{return (typeof window.svg==="function")?window.svg(k):"";}catch(e){return "";}}
-function HY(el){try{if(typeof window.hydrate==="function")window.hydrate(el);}catch(e){}}
-function T(m){try{if(typeof window.toast==="function")window.toast(m);}catch(e){}}
-function esc(s){return (""+(s==null?"":s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
-function unesc(s){return (""+(s==null?"":s)).replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&");}
-function trim(s){return (""+(s||"")).replace(/^\s+|\s+$/g,"");}
-function clamp(s,n){s=""+(s||"");return s.length>n?s.slice(0,n-1)+"\u2026":s;}
-
-/* ---- canonical models: matches window.SideEngine.MODELS keys + the node
-   designer's own settings-card model select, so a real engine call always
-   resolves ---- */
-var FKC_MODELS=[
- {name:"Opus 4.8",tag:"best for hard work",color:"--accent"},
- {name:"Fable 5",tag:"orchestrate + plan",color:"--violet"},
- {name:"Sonnet",tag:"fast, cheap",color:"--sky"},
- {name:"Haiku",tag:"mechanical, terse",color:"--sun"},
- {name:"Local",tag:"on your machine",color:"--mint"}
-];
-function fkcModelInfo(name){
-  var i;
-  for(i=0;i<FKC_MODELS.length;i++){if(FKC_MODELS[i].name===name)return FKC_MODELS[i];}
-  return {name:name||"Model",tag:"",color:"--ink-3"};
-}
-function fkcNormModel(raw){
-  var s=trim((""+(raw||"")).replace(/&[a-z]+;/g," ")),i;
-  if(!s)return "";
-  for(i=0;i<FKC_MODELS.length;i++){if(s.indexOf(FKC_MODELS[i].name)>=0)return FKC_MODELS[i].name;}
-  return "";
-}
-
-/* ---- module state: fork groups, keyed by slug+original node id ---- */
-var FKC_GROUPS={},FKC_NODE2ORIG={};
-try{
-  var _fkcRaw=window.localStorage?window.localStorage.getItem("side_fkc_forks"):null;
-  if(_fkcRaw){var _fkcP=JSON.parse(_fkcRaw);if(_fkcP){FKC_GROUPS=_fkcP.groups||{};FKC_NODE2ORIG=_fkcP.map||{};}}
-}catch(eLoad){}
-function fkcPersist(){
-  try{if(window.localStorage)window.localStorage.setItem("side_fkc_forks",JSON.stringify({groups:FKC_GROUPS,map:FKC_NODE2ORIG}));}catch(e){}
-}
-function fkcGroupKey(slug,id){return slug+"::"+id;}
-function fkcGroupFor(slug,id){
-  var orig=FKC_NODE2ORIG[fkcGroupKey(slug,id)]||id;
-  var key=fkcGroupKey(slug,orig);
-  var members=FKC_GROUPS[key];
-  if(!members||!members.length)members=[{id:orig}];
-  return {orig:orig,key:key,members:members};
-}
-
-/* ---- demo-mode canned outputs, differentiated by model personality ---- */
-function fkcCanned(modelName,promptText,nodeTitle){
-  var task=clamp(trim(promptText)||("the \""+(nodeTitle||"node")+"\" step"),140);
-  if(modelName==="Opus 4.8"){
-    return "Working through this carefully.\n\n1. "+task+" \u2014 breaking it into the load-bearing pieces first.\n2. Checked the obvious failure modes: stale inputs, edge cases at the boundary, anything downstream that assumes the old shape.\n3. Landed on the approach that trades a little extra setup for fewer surprises later.\n\nCaveat: not verified against live data \u2014 flag if the upstream assumptions do not hold and I will redo the risky part.";
-  }
-  if(modelName==="Fable 5"){
-    return "Reading this as an orchestration problem, not a single task.\n\n- Split \""+task+"\" into a plan step and an execution step.\n- Routed the plan to the cheapest model that clears the bar, execution to whichever agent owns the surface.\n- The result below is the coordinated output, not one model's guess.\n\nReady to hand this off or keep iterating.";
-  }
-  if(modelName==="Haiku"){
-    return "- "+task+"\n- done\n- fast, no frills\n- flag if wrong";
-  }
-  if(modelName==="Local"){
-    return "Ran this on-device \u2014 nothing left this machine.\n\n"+task+" \u2014 handled. Slower than the cloud models, private by default, good enough for a first pass.";
-  }
-  return "Straight to it: "+task+".\n\nDone \u2014 clean, no hedging, ready to ship. Ask if you want it expanded.";
-}
-function fkcDemoCost(modelName,tok){
-  var rates={"Opus 4.8":0.00006,"Fable 5":0.00008,"Sonnet":0.000012,"Haiku":0.000004,"Local":0};
-  var r=rates.hasOwnProperty(modelName)?rates[modelName]:0.00001;
-  return tok*r;
-}
-
-/* ---- typing reveal ---- */
-function fkcTypeInto(el,text,delay,chunk,onDone){
-  var i=0;
-  text=text||"";
-  function tick(){
-    i+=chunk;
-    if(i>=text.length){el.textContent=text;if(onDone)onDone();return;}
-    el.textContent=text.slice(0,i);
-    _fkcTimers.push(setTimeout(tick,delay));
-  }
-  if(!text){if(onDone)onDone();return;}
-  tick();
-}
-
-/* ---- prompt: last user message in this node's session, else its body ---- */
-function fkcPromptFor(api,node){
-  var tr=api&&api.transcript,i;
-  if(tr&&tr.length){
-    for(i=tr.length-1;i>=0;i--){if(tr[i]&&tr[i].who==="you"&&tr[i].text){return unesc(tr[i].text);}}
-  }
-  if(node&&node.body)return unesc((""+node.body).replace(/<br\s*\/?>/gi," "));
-  return "Take this step forward and report back.";
-}
-
-function fkcForkTitle(title,modelName){
-  var base=trim(""+(title||"Node")),i,suf;
-  for(i=0;i<FKC_MODELS.length;i++){
-    suf=" \u00b7 "+FKC_MODELS[i].name;
-    if(base.length>suf.length&&base.slice(base.length-suf.length)===suf){base=trim(base.slice(0,base.length-suf.length));break;}
-  }
-  var full=base+" \u00b7 "+modelName;
-  if(full.length>42){
-    var room=42-(3+modelName.length);
-    if(room<4)room=4;
-    base=base.slice(0,room-1)+"\u2026";
-    full=base+" \u00b7 "+modelName;
-  }
-  return full;
-}
-
-/* ================= FORK: clone the node under a picked model ================= */
-function fkcDoFork(host,api,node,slug,modelName){
-  var bridge=window.SideFxBridge;if(!bridge)return;
-  var res=bridge.mutate(function(g){
-    var i,src=null;
-    for(i=0;i<g.nodes.length;i++){if(g.nodes[i].id===node.id){src=g.nodes[i];break;}}
-    if(!src)return null;
-    var mx=0;
-    for(i=0;i<g.nodes.length;i++){var r=g.nodes[i].row||0;if(r>mx)mx=r;}
-    var nid="fk"+(new Date().getTime()).toString(36)+Math.floor(Math.random()*46656).toString(36);
-    var clone={},k;
-    for(k in src){if(Object.prototype.hasOwnProperty.call(src,k))clone[k]=src[k];}
-    clone.id=nid;
-    clone.model=modelName;
-    clone.title=fkcForkTitle(src.title,modelName);
-    clone.row=mx+1;
-    clone.status="queued";
-    clone.cost="&mdash;";
-    clone.tok="&mdash;";
-    delete clone.out;
-    delete clone.realTok;
-    delete clone.realCost;
-    delete clone.failed;
-    clone.tags=(src.tags||[]).slice(0,2).concat(["fork"]);
-    g.nodes.push(clone);
-    var newEdges=[],j,e;
-    for(j=0;j<(g.edges||[]).length;j++){e=g.edges[j];if(e&&e.to===src.id){newEdges.push({from:e.from,to:nid,kind:e.kind||"flow"});}}
-    g.edges=(g.edges||[]).concat(newEdges);
-    return {id:nid};
-  });
-  if(!res||!res.id)return;
-  var grp=fkcGroupFor(slug,node.id);
-  if(!FKC_GROUPS[grp.key]||!FKC_GROUPS[grp.key].length){FKC_GROUPS[grp.key]=[{id:grp.orig}];}
-  FKC_GROUPS[grp.key].push({id:res.id});
-  FKC_NODE2ORIG[fkcGroupKey(slug,res.id)]=grp.orig;
-  FKC_NODE2ORIG[fkcGroupKey(slug,grp.orig)]=grp.orig;
-  fkcPersist();
-  T("Forked under "+modelName);
-  fkcOpenCompare(host,api,node,slug);
-}
-
-/* ================= PICK: keep one variant, clean up the rest ================= */
-function fkcDoPick(host,api,slug,grp,winnerNode,winnerOutput){
-  var bridge=window.SideFxBridge;if(!bridge)return;
-  var removeIds={},i,k,removedCount=0;
-  for(i=0;i<grp.members.length;i++){if(grp.members[i].id!==grp.orig)removeIds[grp.members[i].id]=1;}
-  var winnerModel=winnerNode.model;
-  bridge.mutate(function(g){
-    var orig=null;
-    for(k=0;k<g.nodes.length;k++){if(g.nodes[k].id===grp.orig){orig=g.nodes[k];break;}}
-    if(orig){orig.model=winnerModel;orig.out=winnerOutput;orig.status="done";delete orig.failed;}
-    g.nodes=g.nodes.filter(function(x){return !removeIds[x.id];});
-    g.edges=(g.edges||[]).filter(function(e){return !removeIds[e.from]&&!removeIds[e.to];});
-  });
-  delete FKC_GROUPS[grp.key];
-  for(i=0;i<grp.members.length;i++){delete FKC_NODE2ORIG[fkcGroupKey(slug,grp.members[i].id)];}
-  fkcPersist();
-  for(k in removeIds){if(Object.prototype.hasOwnProperty.call(removeIds,k))removedCount++;}
-  T("Kept "+winnerModel+" \u2014 "+removedCount+" fork"+(removedCount===1?"":"s")+" cleaned up");
-  fkcCloseCompare();
-  var badge=host.querySelector(".ndz-model");
-  if(badge&&api&&api.node&&api.node.id===grp.orig)badge.textContent=winnerModel;
-  if(api&&api.node&&removeIds[api.node.id]){try{api.onBack();}catch(e){}}
-}
-
-/* ================= COMPARE overlay ================= */
-var _fkcTimers=[];
-function fkcClearTimers(){var i;for(i=0;i<_fkcTimers.length;i++){try{clearTimeout(_fkcTimers[i]);}catch(e){}}_fkcTimers=[];}
-function fkcCmpKey(e){if(e.key==="Escape"){e.stopPropagation();e.preventDefault();fkcCloseCompare();}}
-function fkcCloseCompare(){
-  var ov=document.querySelector(".fkc-compare");
-  fkcClearTimers();
-  if(ov&&ov.parentNode)ov.parentNode.removeChild(ov);
-  document.removeEventListener("keydown",fkcCmpKey,true);
-}
-function fkcRunColumn(entry,demo,promptText,goal,fleetTitle){
-  var outEl=entry.el.querySelector(".fkc-col-out");
-  var thinkEl=entry.el.querySelector(".fkc-col-think");
-  var metaEl=entry.el.querySelector(".fkc-col-meta");
-  var pickBtn=entry.el.querySelector(".fkc-col-pick");
-  thinkEl.className="fkc-col-think on";
-  function reveal(text,meta){
-    thinkEl.className="fkc-col-think";
-    entry.output=text;
-    fkcTypeInto(outEl,text,16,3,function(){pickBtn.disabled=false;});
-    metaEl.textContent=meta;
-  }
-  var modelName=fkcNormModel(entry.node.model)||entry.node.model||"Model";
-  if(demo){
-    var text=fkcCanned(modelName,promptText,entry.node.title);
-    var tok=Math.max(30,Math.round(text.length/3.6));
-    var cost=fkcDemoCost(modelName,tok);
-    _fkcTimers.push(setTimeout(function(){reveal(text,tok+" tok (demo) \u00b7 ~$"+cost.toFixed(4));},420+Math.floor(Math.random()*380)));
-  }else{
-    var mid=(window.SideEngine.MODELS&&window.SideEngine.MODELS[modelName])||"claude-sonnet-5";
-    var sys="You are the \""+(entry.node.title||"node")+"\" node ("+(entry.node.sub||"agent")+") inside an agent fleet named \""+fleetTitle+"\". Fleet goal: "+goal+". Model variant under test: "+modelName+". Stay in role. Be concise, concrete, useful.";
-    window.SideEngine.call({model:mid,maxTokens:700,system:sys,user:promptText},function(err,res){
-      if(err){reveal("(call failed: "+err.message+")","error");return;}
-      var text=res&&res.text?res.text:"(empty reply)";
-      var tok=(res&&((res.inTok||0)+(res.outTok||0)))||0;
-      var cost=(res&&res.cost)||0;
-      reveal(text,tok+" tok \u00b7 $"+cost.toFixed(4));
-    });
-  }
-}
-function fkcOpenCompare(host,api,node,slug){
-  fkcClosePicker();
-  fkcCloseCompare();
-  var bridge=window.SideFxBridge;if(!bridge)return;
-  var grp=fkcGroupFor(slug,node.id);
-  var cur=bridge.cur();
-  var g=(cur&&cur.graph)||{nodes:[]};
-  var members=[],i,j,mid,found;
-  for(i=0;i<grp.members.length;i++){
-    mid=grp.members[i].id;found=null;
-    for(j=0;j<g.nodes.length;j++){if(g.nodes[j].id===mid){found=g.nodes[j];break;}}
-    if(found)members.push(found);
-  }
-  if(members.length<2){T("Fork a model first to compare");return;}
-
-  var goal="";
-  for(i=0;i<g.nodes.length;i++){if((g.nodes[i].type||"")==="prompt"&&!goal)goal=unesc(g.nodes[i].body||"");}
-  var fleetTitle=(api&&api.fleetTitle)||"this fleet";
-  var promptText=fkcPromptFor(api,node);
-  var demo=!(window.SideEngine&&window.SideEngine.hasKey&&window.SideEngine.hasKey());
-
-  var overlay=document.createElement("div");
-  overlay.className="fkc-compare";
-  overlay.innerHTML=
-    '<div class="fkc-cmp-head">'
-    +'<div class="fkc-cmp-h">'+S("grid")+"<span>Compare forks</span><i class=\"fkc-cmp-sub\">"+esc(clamp(promptText,90))+"</i></div>"
-    +'<button type="button" class="fkc-cmp-x" title="Close">'+S("x")+"</button>"
-    +"</div>"
-    +'<div class="fkc-cmp-cols"></div>';
-  host.appendChild(overlay);
-  HY(overlay);
-  overlay.querySelector(".fkc-cmp-x").addEventListener("click",fkcCloseCompare);
-
-  var colsWrap=overlay.querySelector(".fkc-cmp-cols");
-  var cols=[];
-  for(i=0;i<members.length;i++){
-    var mnode=members[i];
-    var info=fkcModelInfo(fkcNormModel(mnode.model)||mnode.model);
-    var col=document.createElement("div");
-    col.className="fkc-col";
-    col.style.setProperty("--fkc-c","var("+info.color+")");
-    col.innerHTML=
-      '<div class="fkc-col-head"><span class="fkc-col-dot"></span><b>'+esc(mnode.model||info.name)+"</b></div>"
-      +'<div class="fkc-col-body"><span class="fkc-col-out"></span><span class="fkc-col-think"><i></i><i></i><i></i></span></div>'
-      +'<div class="fkc-col-meta"></div>'
-      +'<button type="button" class="fkc-col-pick" disabled>Pick this one</button>';
-    colsWrap.appendChild(col);
-    cols.push({node:mnode,el:col,output:""});
-  }
-  HY(colsWrap);
-
-  function attachPick(entry){
-    entry.el.querySelector(".fkc-col-pick").addEventListener("click",function(){
-      fkcDoPick(host,api,slug,grp,entry.node,entry.output||"");
-    });
-  }
-  for(i=0;i<cols.length;i++){
-    attachPick(cols[i]);
-    (function(entry,idx){
-      _fkcTimers.push(setTimeout(function(){fkcRunColumn(entry,demo,promptText,goal,fleetTitle);},idx*220));
-    })(cols[i],i);
-  }
-  setTimeout(function(){document.addEventListener("keydown",fkcCmpKey,true);},0);
-}
-
-/* ================= FORK picker popover ================= */
-function fkcPickOutside(e){
-  var p=document.querySelector(".fkc-pick");
-  if(p&&!p.contains(e.target))fkcClosePicker();
-}
-function fkcPickKey(e){if(e.key==="Escape"){e.stopPropagation();e.preventDefault();fkcClosePicker();}}
-function fkcClosePicker(){
-  var p=document.querySelector(".fkc-pick");
-  if(p&&p.parentNode)p.parentNode.removeChild(p);
-  document.removeEventListener("mousedown",fkcPickOutside,false);
-  document.removeEventListener("keydown",fkcPickKey,true);
-}
-function fkcOpenPicker(host,api,node,slug){
-  fkcClosePicker();
-  fkcCloseCompare();
-  var current=fkcNormModel(node.model);
-  var opts=[],i;
-  for(i=0;i<FKC_MODELS.length;i++){if(FKC_MODELS[i].name!==current)opts.push(FKC_MODELS[i]);}
-  var pop=document.createElement("div");
-  pop.className="fkc-pick";
-  var html='<div class="fkc-pick-hd">Fork under a different model</div>';
-  if(!opts.length){
-    html+='<div class="fkc-pick-empty">No other models to try.</div>';
-  }else{
-    for(i=0;i<opts.length;i++){
-      html+='<button type="button" class="fkc-pick-item" data-fkc-m="'+esc(opts[i].name)+'" style="--fkc-c:var('+opts[i].color+')">'
-        +'<span class="fkc-pick-dot"></span><span class="fkc-pick-name">'+esc(opts[i].name)+"</span>"
-        +'<span class="fkc-pick-tag">'+esc(opts[i].tag)+"</span></button>";
-    }
-  }
-  pop.innerHTML=html;
-  host.appendChild(pop);
-  HY(pop);
-  var items=pop.querySelectorAll(".fkc-pick-item");
-  for(i=0;i<items.length;i++){
-    items[i].addEventListener("click",function(){
-      var m=this.getAttribute("data-fkc-m");
-      fkcClosePicker();
-      fkcDoFork(host,api,node,slug,m);
-    });
-  }
-  setTimeout(function(){
-    document.addEventListener("mousedown",fkcPickOutside,false);
-    document.addEventListener("keydown",fkcPickKey,true);
-  },0);
-}
-
-/* ================= inject Fork / Compare into the top-bar more-menu ================= */
-function fkcAfterDesigner(host,api){
-  if(!host||!api)return;
-  var node=api.node;if(!node)return;
-  var tp=node.type||"";
-  if(tp==="prompt"||tp==="fork"||tp==="converge")return;
-  var bridge=window.SideFxBridge;if(!bridge)return;
-  var menu=host.querySelector(".ndz-menu");if(!menu)return;
-  var moreWrap=host.querySelector(".ndz-more-wrap");
-  var moreBtn=host.querySelector(".ndz-more");
-  var cur=bridge.cur();
-  var slug=cur&&cur.slug;
-  if(!slug)return;
-
-  function closeHostMenu(){if(moreWrap&&moreWrap.classList.contains("open")&&moreBtn)moreBtn.click();}
-
-  var forkBtn=document.createElement("button");
-  forkBtn.type="button";
-  forkBtn.className="ndz-mi fkc-fork-mi";
-  forkBtn.innerHTML=S("fork")+"<span>Fork \u00b7 try another model</span>";
-  menu.insertBefore(forkBtn,menu.firstChild);
-  forkBtn.addEventListener("click",function(){closeHostMenu();fkcOpenPicker(host,api,node,slug);});
-
-  var grp=fkcGroupFor(slug,node.id);
-  if(grp.members&&grp.members.length>1){
-    var cmpBtn=document.createElement("button");
-    cmpBtn.type="button";
-    cmpBtn.className="ndz-mi fkc-cmp-mi";
-    cmpBtn.innerHTML=S("grid")+"<span>Compare forks ("+grp.members.length+")</span>";
-    menu.insertBefore(cmpBtn,forkBtn.nextSibling);
-    cmpBtn.addEventListener("click",function(){closeHostMenu();fkcOpenCompare(host,api,node,slug);});
-  }
-}
-
-/* ================= wrap window.buildNodeDesigner (defensive retry, like the
-   ctx module wraps window.buildFlowView) ================= */
-var _fkcTries=0;
-function fkcEnsureWrap(){
-  try{
-    var f=window.buildNodeDesigner;
-    if(!f)return false;
-    if(f.__fkcWrapped)return true;
-    var wrapped=function(host,api){
-      f(host,api);
-      try{fkcAfterDesigner(host,api);}catch(eAD){}
-    };
-    wrapped.__fkcWrapped=true;
-    window.buildNodeDesigner=wrapped;
-    return true;
-  }catch(e){return false;}
-}
-function fkcArm(){if(fkcEnsureWrap())return;_fkcTries++;if(_fkcTries<60)setTimeout(fkcArm,500);}
-fkcArm();
-
-})();
-</script>
+<!-- ==SCRIPT-MARK== -->
 
