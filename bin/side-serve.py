@@ -8,6 +8,7 @@
 # API keys and no widened reach. This daemon never executes proposals -- approval
 # and execution live elsewhere in the product. (Per-action edit bridge = future.)
 import argparse
+import hmac
 import json
 import mimetypes
 import os
@@ -25,6 +26,38 @@ VERSION = "0.8.0-alpha.1"
 MAX_SAVE_BYTES = 2 * 1024 * 1024  # 2MB
 MAX_BODY_BYTES = 8 * 1024 * 1024  # hard cap on raw request body /api/save will read
 MAX_AGENT_BODY = 64 * 1024  # 64KB JSON cap on agent endpoints
+
+# SEC-03: per-launch bearer token. Generated fresh on every process start and
+# served ONLY to same-origin callers via /api/health (cross-origin reads of the
+# health body are blocked by CORS, since we only echo Access-Control-Allow-Origin
+# for allowed origins). Mutating POSTs must prove they are same-origin by EITHER a
+# matching Origin header OR presenting this token in the X-Side-Token header. The
+# Origin path lets the real app work immediately (before it has fetched the
+# token); the token path covers same-origin clients that omit Origin. See
+# Handler._mutation_guard_ok for the full contract.
+LAUNCH_TOKEN = uuid.uuid4().hex
+
+# SEC-04: only these Host header hosts are accepted (blocks DNS-rebinding, where a
+# malicious page resolves an attacker domain to 127.0.0.1 and talks to us under
+# that Host). The port, if present, must match the one we bound.
+ALLOWED_HOSTS = ("127.0.0.1", "localhost")
+
+# SEC-05: Content-Security-Policy for served pages. Deliberately tight but
+# compatible with the single-file app: inline <script>/<style> ('unsafe-inline',
+# but NOT 'unsafe-eval' -- the app uses neither eval nor new Function), data:/blob:
+# images, fonts as data:, and connections limited to same-origin, the Anthropic
+# Messages API (browser tier), and the local Ollama/daemon loopback ports.
+CONTENT_SECURITY_POLICY = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline'; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob:; "
+    "connect-src 'self' https://api.anthropic.com http://127.0.0.1:* http://localhost:*; "
+    "font-src 'self' data:; "
+    "base-uri 'none'; "
+    "form-action 'none'; "
+    "frame-ancestors 'none'"
+)
 
 WORKSPACE_ROOT = Path(os.path.expanduser("~/Side")).resolve()
 RUNS_ROOT = (WORKSPACE_ROOT / "runs").resolve()  # throwaway agent sandboxes live here
@@ -154,16 +187,60 @@ def sanitize_sandbox(slug):
     return sandbox, None
 
 
+# SEC-02(a): env vars stripped from the child claude process. Even in read-only
+# mode a hostile prompt could try to have claude echo back these credentials, so
+# unrelated third-party secrets never enter the child env in the first place. We
+# KEEP the child's own claude auth (ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN and
+# the ~/.claude login on disk) -- without it the node cannot read/analyze anything.
+SECRET_ENV_PREFIXES = (
+    "AWS_", "GOOGLE_", "GCP_", "GCLOUD_", "AZURE_", "GITHUB_", "GH_", "OPENAI_",
+    "GROQ_", "MISTRAL_", "COHERE_", "REPLICATE_", "HUGGINGFACE_", "SLACK_",
+    "STRIPE_", "TWILIO_", "SENDGRID_", "MAILGUN_", "VERCEL_", "NETLIFY_",
+    "CLOUDFLARE_", "SUPABASE_", "FIREBASE_", "DIGITALOCEAN_", "HEROKU_",
+    "DOCKERHUB_", "NGROK_", "SENTRY_", "DATADOG_", "PAGERDUTY_", "NPM_TOKEN",
+)
+SECRET_ENV_EXACT = frozenset({
+    "GH_TOKEN", "GITHUB_TOKEN", "OPENAI_API_KEY", "OPENROUTER_API_KEY",
+    "GEMINI_API_KEY", "GROQ_API_KEY", "MISTRAL_API_KEY", "COHERE_API_KEY",
+    "PERPLEXITY_API_KEY", "DEEPSEEK_API_KEY", "XAI_API_KEY", "FIREWORKS_API_KEY",
+    "TOGETHER_API_KEY", "HF_TOKEN", "REPLICATE_API_TOKEN", "ANTHROPIC_ADMIN_KEY",
+    "DATABASE_URL", "REDIS_URL", "MONGODB_URI", "PGPASSWORD", "SSH_AUTH_SOCK",
+})
+# Never strip these -- they ARE the child's claude credentials.
+KEEP_ENV_EXACT = frozenset({
+    "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_BASE_URL",
+})
+
+
 def build_child_env(claude_path):
-    """Env for the child claude process: inherit the daemon env and guarantee the
-    claude bin dir is on PATH. We deliberately KEEP the machine's own claude auth
-    (subscription login in ~/.claude, or ANTHROPIC_API_KEY if that's how the user
-    authenticates the CLI) -- the node cannot read/analyze anything otherwise.
+    """Env for the child claude process: inherit the daemon env, guarantee the
+    claude bin dir is on PATH, and scrub unrelated third-party secrets (SEC-02a).
+    We deliberately KEEP the machine's own claude auth (subscription login in
+    ~/.claude, or ANTHROPIC_API_KEY if that's how the user authenticates the CLI)
+    -- the node cannot read/analyze anything otherwise. If claude authenticates via
+    Bedrock/Vertex we also keep the matching cloud creds so the tier never breaks.
     Safety here comes from the read-only tool set (zero edits) + the throwaway
-    sandbox cwd, not from starving claude of its own credentials. Note: the Side
-    browser key (localStorage side_api_key) never touches this process -- it lives
-    in the browser and is only used for the direct Messages-API tier."""
+    sandbox cwd + this scrub, not from starving claude of its own credentials.
+    Note: the Side browser key (localStorage side_api_key) never touches this
+    process -- it lives in the browser and is only used for the Messages-API tier."""
     env = os.environ.copy()
+
+    def _truthy(name):
+        return env.get(name, "").strip().lower() not in ("", "0", "false", "no")
+
+    keep_aws = _truthy("CLAUDE_CODE_USE_BEDROCK")
+    keep_gcp = _truthy("CLAUDE_CODE_USE_VERTEX")
+    for key in list(env.keys()):
+        if key in KEEP_ENV_EXACT:
+            continue
+        if keep_aws and key.startswith("AWS_"):
+            continue  # claude authenticates via Bedrock -> its AWS creds must stay
+        if keep_gcp and (key.startswith("GOOGLE_") or key.startswith("GCP_")
+                         or key.startswith("GCLOUD_")):
+            continue  # claude authenticates via Vertex -> its GCP creds must stay
+        if key in SECRET_ENV_EXACT or key.startswith(SECRET_ENV_PREFIXES):
+            del env[key]
+
     bin_dir = os.path.dirname(claude_path)
     if bin_dir:
         parts = env.get("PATH", "").split(os.pathsep) if env.get("PATH") else []
@@ -171,6 +248,77 @@ def build_child_env(claude_path):
             env["PATH"] = os.pathsep.join([bin_dir] + parts) if parts else bin_dir
     env["CLAUDE_NO_ANALYTICS"] = "1"
     return env
+
+
+def _sbpl_quote(path):
+    """Escape a filesystem path for an SBPL (sandbox profile) string literal."""
+    return str(path).replace("\\", "\\\\").replace('"', '\\"')
+
+
+def build_agent_argv(claude_argv, sandbox_path):
+    """SEC-02(b): defense-in-depth on top of the read-only tool restriction. The
+    tool set already blocks writes/bash, but a read-only run could still READ any
+    absolute path (e.g. ~/.ssh, ~/.aws, other repos) and surface it in its output.
+    On macOS we therefore wrap claude in `sandbox-exec` with a profile that DENIES
+    file reads under $HOME -- re-permitting only the throwaway sandbox, the agent
+    workspace roots, and the minimal paths claude needs to run (its own install +
+    ~/.claude auth + node/npm caches). System paths (/usr, /System, ...) stay
+    readable so node/claude can start; they hold no user secrets. Reads of the rest
+    of $HOME are blocked, which is the real exfiltration surface.
+
+    BEST-EFFORT -- the tier must never break: if SIDE_SANDBOX is off, or we're not
+    on darwin, or `sandbox-exec` is missing, or the generated profile fails a
+    synchronous pre-flight compile, we return the plain (un-wrapped) argv."""
+    default_on = "1" if sys.platform == "darwin" else "0"
+    flag = os.environ.get("SIDE_SANDBOX", default_on).strip().lower()
+    if flag in ("", "0", "false", "no", "off"):
+        return claude_argv
+    if sys.platform != "darwin":
+        return claude_argv  # the profile below is macOS-specific SBPL
+    sbx = shutil.which("sandbox-exec") or "/usr/bin/sandbox-exec"
+    if not (os.path.isfile(sbx) and os.access(sbx, os.X_OK)):
+        return claude_argv
+
+    home = os.path.expanduser("~")
+    readable = [
+        sandbox_path, str(RUNS_ROOT), str(WORKSPACE_ROOT),
+        os.path.join(home, ".claude"),
+        os.path.join(home, ".config"), os.path.join(home, ".cache"),
+        os.path.join(home, ".npm"), os.path.join(home, ".local"),
+        os.path.join(home, ".nvm"), os.path.join(home, ".n"),
+        os.path.join(home, ".asdf"), os.path.join(home, ".volta"),
+        os.path.join(home, ".fnm"), os.path.join(home, ".bun"),
+        os.path.join(home, "Library", "Caches"),
+        os.path.join(home, "Library", "Application Support", "claude"),
+    ]
+    claude_file = os.path.join(home, ".claude.json")
+    # A path containing a quote/newline would corrupt the profile -> bail (unwrapped).
+    for p in [home, claude_file] + readable:
+        if '"' in p or "\n" in p:
+            return claude_argv
+    allow_block = "\n".join('  (subpath "%s")' % _sbpl_quote(p) for p in readable)
+    profile = (
+        "(version 1)\n"
+        "(allow default)\n"                        # baseline: don't fight node's needs
+        '(deny file-read* (subpath "%s"))\n'       # ...but wall off all of $HOME reads
+        "(allow file-read-metadata)\n"             # keep stat/traverse so paths resolve
+        "(allow file-read*\n%s\n"                  # re-permit sandbox + claude essentials
+        '  (literal "%s"))\n'                       # ~/.claude.json is a file, not a dir
+    ) % (_sbpl_quote(home), allow_block, _sbpl_quote(claude_file))
+
+    # Pre-flight: verify sandbox-exec accepts the profile before we depend on it.
+    try:
+        chk = subprocess.run(
+            [sbx, "-p", profile, "/usr/bin/true"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=5,
+        )
+        if chk.returncode != 0:
+            return claude_argv
+    except (OSError, subprocess.SubprocessError):
+        return claude_argv
+    return [sbx, "-p", profile] + claude_argv
 
 
 # ---- job manager ----
@@ -358,6 +506,59 @@ class Handler(BaseHTTPRequestHandler):
             headers["Access-Control-Allow-Origin"] = origin
         return headers
 
+    def _host_ok(self):
+        """SEC-04: accept only Host headers whose host part is 127.0.0.1/localhost
+        (with our bound port or no port). Blocks DNS-rebinding. A missing Host
+        (HTTP/1.0) is allowed -- the socket already binds 127.0.0.1 only and a
+        rebinding attack always carries the attacker's Host."""
+        host_hdr = self.headers.get("Host", "")
+        if not host_hdr:
+            return True
+        host_part, sep, port_part = host_hdr.rpartition(":")
+        if not sep:  # no colon -> whole value is the host, no port
+            host_part, port_part = host_hdr, ""
+        # A bracketed IPv6 literal (e.g. [::1]) is never in our allow-list; treating
+        # the trailing ":x" as a port is harmless because the host still won't match.
+        if host_part.strip().lower() not in ALLOWED_HOSTS:
+            return False
+        if port_part and port_part != str(self.port):
+            return False
+        return True
+
+    def _reject_bad_host(self):
+        """Send the SEC-04 rejection. Returns True when it fired (Host was bad)."""
+        if self._host_ok():
+            return False
+        try:
+            self._send_json(421, {"error": "bad host"})
+        except Exception:
+            pass
+        return True
+
+    def _mutation_guard_ok(self, headers):
+        """CSRF + auth gate for EVERY mutating POST (/api/save, /api/agent/analyze,
+        /api/agent/stop). Rejects with 403 unless BOTH hold:
+          (a) Content-Type starts with 'application/json' -- blocks cross-origin
+              'simple' POSTs (text/plain, form encodings) that skip the CORS
+              preflight and could otherwise trigger writes/agent spawns; AND
+          (b) the caller proves same-origin, by EITHER a matching Origin header
+              (allow-list {http://127.0.0.1:PORT, http://localhost:PORT}) OR a
+              matching X-Side-Token bearer (served same-origin via /api/health).
+        Origin covers the real app before it has read the token; the token covers
+        same-origin clients that omit Origin. Returns True if allowed, else emits
+        the 403 and returns False. GET endpoints do not call this."""
+        ctype = self.headers.get("Content-Type", "")
+        if not ctype.strip().lower().startswith("application/json"):
+            self._send_json(403, {"error": "content-type must be application/json"}, headers)
+            return False
+        origin_ok = cors_origin(self, self.port) is not None
+        token = self.headers.get("X-Side-Token", "")
+        token_ok = bool(token) and hmac.compare_digest(token, LAUNCH_TOKEN)
+        if not (origin_ok or token_ok):
+            self._send_json(403, {"error": "cross-origin request blocked"}, headers)
+            return False
+        return True
+
     def _method_not_allowed(self, allowed):
         headers = self._cors_headers()
         headers["Allow"] = ",".join(allowed)
@@ -407,6 +608,8 @@ class Handler(BaseHTTPRequestHandler):
     # ---- routing ----
     def do_GET(self):
         try:
+            if self._reject_bad_host():
+                return
             route = urllib.parse.urlsplit(self.path).path
             if route in API_ROUTES:
                 if "GET" not in API_ROUTES[route]:
@@ -428,6 +631,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         try:
+            if self._reject_bad_host():
+                return
             route = urllib.parse.urlsplit(self.path).path
             if route in API_ROUTES:
                 if "POST" not in API_ROUTES[route]:
@@ -445,9 +650,11 @@ class Handler(BaseHTTPRequestHandler):
             self._safe_500(exc)
 
     def do_OPTIONS(self):
+        if self._reject_bad_host():
+            return
         if self.path.startswith("/api/"):
             headers = self._cors_headers()
-            headers["Access-Control-Allow-Headers"] = "content-type"
+            headers["Access-Control-Allow-Headers"] = "content-type, x-side-token"
             headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
             self.send_response(204)
             for k, v in headers.items():
@@ -470,12 +677,17 @@ class Handler(BaseHTTPRequestHandler):
             "ok": True,
             "version": VERSION,
             "workspace": str(WORKSPACE_ROOT),
+            # SEC-03: per-launch token. CORS keeps this readable same-origin only,
+            # so the app can fetch it here and attach it as X-Side-Token on writes.
+            "token": LAUNCH_TOKEN,
             "agent": {"available": bool(detect.get("available")), "mode": MODE_LABEL},
         }
         self._send_json(200, obj, self._cors_headers())
 
     def _handle_save(self):
         headers = self._cors_headers()
+        if not self._mutation_guard_ok(headers):  # SEC-01/03: CSRF + auth gate
+            return
         length_hdr = self.headers.get("Content-Length", "0") or "0"
         try:
             length = int(length_hdr)
@@ -540,6 +752,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def _handle_agent_analyze(self):
         headers = self._cors_headers()
+        if not self._mutation_guard_ok(headers):  # SEC-01/03: CSRF + auth gate
+            return
         data = self._read_json(headers, MAX_AGENT_BODY)
         if data is None:
             return
@@ -598,6 +812,9 @@ class Handler(BaseHTTPRequestHandler):
             READ_TOOLS,
         ]
         env = build_child_env(claude_path)
+        # SEC-02(b): best-effort sandbox-exec read-confinement on top of the
+        # read-only tool restriction (falls back to the plain argv if unavailable).
+        argv = build_agent_argv(argv, str(sandbox))
 
         job_id = JOBS.create(argv, str(sandbox), env)
         if job_id is None:
@@ -624,6 +841,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def _handle_agent_stop(self):
         headers = self._cors_headers()
+        if not self._mutation_guard_ok(headers):  # SEC-01/03: CSRF + auth gate
+            return
         data = self._read_json(headers, MAX_AGENT_BODY)
         if data is None:
             return
@@ -653,6 +872,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(data)))
+        # SEC-05: lock down what the served page may load/connect to.
+        self.send_header("Content-Security-Policy", CONTENT_SECURITY_POLICY)
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(data)
 
