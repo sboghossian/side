@@ -17,17 +17,17 @@
 |---|---|---|
 | **1 · Install** | `curl -fsSL sboghossian.github.io/side/install.sh \| sh` | one command, zero dependencies |
 | **2 · Open** | `side` | a desktop window opens on `localhost:4600` — already yours |
-| **3 · Plug in** | paste **any model key** | ~30 seconds; or skip it and explore the demo |
+| **3 · Plug in** | paste **your Claude API key** | ~30 seconds; or skip it and explore the demo |
 
-Nothing leaves your computer. Your key lives in your browser and talks to exactly one place: your model's API.
+Nothing leaves your computer. Your key lives in your browser and talks to exactly one place: `api.anthropic.com`.
 
 ---
 
 ## Why
 
-99% of people don't code. And most people who *use* AI every day still can't see how it works. You can chat with a model, but you never see how agents think, how they plan, or how they work together. So people either trust AI blindly or stay a little scared of it.
+If you're already building on Claude — API key in hand, maybe Claude Code on your machine — you've felt the gap between "chat with a model" and "run a real fleet of agents." The chat window shows you one thread. It doesn't show you how agents plan, split work, or run in parallel — you either trust the black box or you write your own orchestration code to see inside it.
 
-Side is the missing picture: hand it one plain-English prompt and **watch** a fleet of agents plan, split the work, route each task to the right model, stop at your approval gates, and ship the result. Think **n8n for the AI age** — built so you learn by watching, not reading.
+Side is the visual control room for that gap: hand it one plain-English prompt and **watch** a fleet of Claude-powered agents plan, split the work, and stop at your approval gates before anything ships. One HTML file, local-first, your own API key — built so you learn by watching, not by reading logs.
 
 ## What you get
 
@@ -43,9 +43,9 @@ Two projections of the same fleet: **Flow** (default) — a fast, structured ver
 
 <img src="assets/02-canvas.png" alt="The Side canvas" width="920">
 
-### 🧠 Route every task to the right model
+### 🧠 A routing table for every node
 
-Open any node. The orchestrator sends server-side rendering to one model, i18n to another, transcription to the cheapest one that clears the bar — and anything private to a local model. You can override every row.
+Open any node and assign it a model. Claude is what actually runs today, on your key. GPT, Gemini, and local (Ollama) show up in the same table so you can plan your routing now — they go live with the v0.8 engine (see the roadmap). You can override every row.
 
 <img src="assets/03-routing.png" alt="Per-node routing table" width="920">
 
@@ -57,7 +57,7 @@ ARR, spend, live agents, human gates, heartbeat — every widget draggable, resi
 
 ### 🛡️ Nothing irreversible without your yes
 
-Sends, merges, deploys, payments — everything risky stops at a human gate and lands in one inbox. Approve, modify, or reject, with one-click revert armed for 24 hours.
+This is the design promise the whole product is built around: anything risky stops at a human gate and lands in one inbox before it's applied — approve, modify, or reject, with one-click revert armed for 24 hours. Today the agent tier reads and proposes; sends, merges, deploys, and payments are the real tool integrations on the roadmap (see [MCP client](#status--roadmap)), and they'll ship behind this same gate, not around it.
 
 <img src="assets/05-inbox-gates.png" alt="Inbox with human approval gates" width="920">
 
@@ -135,7 +135,7 @@ Configuration takes about 30 seconds and asks exactly three things: your name, a
 ## Under the hood
 
 - **One self-contained HTML file.** The entire product — canvas, fleet board, inbox, cost, templates, onboarding, command palette — is a single zero-dependency file. No build step, no node_modules, no framework.
-- **Local-first by design.** The launcher is ~80 lines of POSIX sh plus a stdlib-only Python daemon on `127.0.0.1` — it serves the app and writes your shipped artifacts under `~/Side/`, and nothing else. Your keys, your files, your machine.
+- **Local-first by design.** The launcher is POSIX sh (checksum-verified against a published manifest before install/update) plus a stdlib-only Python daemon on `127.0.0.1` — it serves the app and writes your shipped artifacts under `~/Side/`, and nothing else. Your keys, your files, your machine.
 - **A desktop app without the desktop-app tax.** `side` opens a chromeless app window if you have any Chromium browser, and falls back to your default browser. No Electron, no 200MB runtime.
 - Press `⌘K` anywhere. Everything is reachable from the keyboard.
 
@@ -155,7 +155,7 @@ Your key lives in your browser's local storage and is sent to exactly one place:
 Have [Claude Code](https://claude.com/claude-code) installed and logged in? Side detects it and a fleet's nodes stop *describing* work and start **reading your real world** to propose it. When a node runs, the `side` daemon spawns a headless Claude Code process that:
 
 - runs **read-only** — limited to read tools (`Read`, `Grep`, `Glob`); no write, edit, or shell tool is available, so it *cannot* modify anything even if asked (we tested it adversarially — it won't),
-- works inside a **throwaway sandbox** (`~/Side/runs/<fleet>/workspace`), never your wider disk,
+- launches with its working directory set to a **throwaway sandbox** (`~/Side/runs/<fleet>/workspace`) — today that's a convention, not an enforced jail: the read tools can follow a path outside it if a prompt points them there. A real OS-level sandbox (macOS `sandbox-exec`, tighter path allowlisting) is the next fix, not shipped yet. Don't run it against a prompt you don't trust,
 - uses **your existing Claude Code login** — no separate API key,
 - and hands its **proposal to your gate**. Nothing is applied. You read what it would do and approve.
 
