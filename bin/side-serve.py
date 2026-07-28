@@ -419,15 +419,24 @@ def acp_enabled():
 
 
 def acp_fs_mode():
-    """SIDE_ACP_FS: 'rw' (default) | 'read' | off. Controls which fs/* client
-    capabilities we advertise. Reads and writes are jailed to the session root
-    regardless -- this only decides what we tell the agent it may call."""
+    """SIDE_ACP_FS: 'read' (DEFAULT) | 'rw' | off.
+
+    Controls which fs/* client capabilities we advertise. Reads and writes are
+    jailed to the session root regardless -- this only decides what we tell the
+    agent it may call.
+
+    Default changed rw -> read on 2026-07-28. Tier 1 (`claude -p`) is read-only
+    by tool restriction and was proven so adversarially. ACP agents getting
+    write access is a real escalation, and an escalation should be a decision
+    the operator makes explicitly, not one they inherit from a default. Opt in
+    with SIDE_ACP_FS=rw.
+    """
     raw = (os.environ.get("SIDE_ACP_FS") or "").strip().lower()
     if raw in ("0", "false", "no", "off", "none"):
         return "off"
-    if raw in ("r", "read", "ro", "readonly", "read-only"):
-        return "read"
-    return "rw"
+    if raw in ("rw", "w", "write", "readwrite", "read-write"):
+        return "rw"
+    return "read"
 
 
 def acp_terminal_enabled():
@@ -1642,10 +1651,26 @@ class AcpSession:
             self.emit({"type": "commands", "commands": cmds, "total": total,
                        "truncated": total > len(cmds)})
         elif kind == "usage_update":
+            # `used`/`size` are CONTEXT WINDOW numbers, not spend. Forward the
+            # raw token counts too when the agent reports them, so the client
+            # can feed SideBudget.record. Without these the budget ledger can
+            # never see an ACP session at all. Agents spell these differently,
+            # so accept the common variants and pass through None otherwise --
+            # the client records nothing rather than estimating.
+            def _tok(*names):
+                for n in names:
+                    v = update.get(n)
+                    if isinstance(v, (int, float)):
+                        return v
+                return None
+            in_tok = _tok("inputTokens", "input_tokens", "promptTokens", "prompt_tokens")
+            out_tok = _tok("outputTokens", "output_tokens", "completionTokens", "completion_tokens")
             self.usage = {"used": update.get("used"), "size": update.get("size"),
-                          "cost": update.get("cost")}
+                          "cost": update.get("cost"),
+                          "inputTokens": in_tok, "outputTokens": out_tok}
             self.emit({"type": "usage", "used": update.get("used"),
-                       "size": update.get("size"), "cost": update.get("cost")})
+                       "size": update.get("size"), "cost": update.get("cost"),
+                       "inputTokens": in_tok, "outputTokens": out_tok})
         else:
             self.emit({"type": "raw", "sessionUpdate": kind, "raw": update})
 

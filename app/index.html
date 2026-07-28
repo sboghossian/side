@@ -21392,170 +21392,6 @@ setTimeout(initEntry,600);
 /* reduced motion: the only added animation is nodePulseGlow, already guarded
    above; every other addition is a static shadow / colour, nothing to gate. */
 </style>
-<style id="w1a-artifacts">
-/* ============================================================
-   W1-A ARTIFACT SYSTEM (.art-)
-   window.SideArtifacts renderers. Prefix: art-. Uses house
-   tokens only (--surface, --ink, --line, --shadow, --r-*, etc).
-   ============================================================ */
-
-/* ---- card shell ---- */
-.art-card{background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r-md);box-shadow:var(--shadow-sm);padding:14px 16px 16px;font-family:var(--sans);color:var(--ink);margin:0 0 12px;position:relative}
-.art-card:last-child{margin-bottom:0}
-
-/* ---- header ---- */
-.art-hd{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
-.art-hd-txt{flex:1;min-width:0}
-.art-title{font-size:14.5px;font-weight:640;color:var(--ink);line-height:1.3;word-break:break-word}
-.art-meta{font:500 11px/1.4 var(--mono);color:var(--ink-3);text-transform:uppercase;letter-spacing:.02em;margin-top:2px}
-.art-body{font-size:13px;line-height:1.55;color:var(--ink-2)}
-
-/* ---- type glyph ---- */
-.art-ic-wrap{flex:0 0 auto;width:30px;height:30px;border-radius:var(--r-sm);background:var(--accent-soft);color:var(--accent-strong);display:flex;align-items:center;justify-content:center}
-.art-ic{width:16px;height:16px;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;fill:none;flex:none}
-.art-ic-sm{width:13px;height:13px}
-.art-type-plan .art-ic-wrap{background:var(--info-soft);color:var(--info)}
-.art-type-checklist .art-ic-wrap{background:var(--good-soft);color:var(--good)}
-.art-type-walkthrough .art-ic-wrap{background:var(--violet-soft);color:var(--violet)}
-.art-type-screenshot .art-ic-wrap{background:var(--sky-soft);color:var(--sky)}
-.art-type-recording .art-ic-wrap{background:var(--pink-soft);color:var(--pink)}
-.art-type-file-change .art-ic-wrap{background:var(--accent-soft);color:var(--accent-strong)}
-.art-type-summary .art-ic-wrap{background:var(--sun-soft);color:var(--sun)}
-
-/* ---- demo tag ---- */
-.art-demo-tag{flex:0 0 auto;font:700 9.5px/1 var(--mono);letter-spacing:.05em;color:var(--warn);background:var(--warn-soft);border:1px solid var(--warn);border-radius:999px;padding:3px 7px;align-self:flex-start;white-space:nowrap}
-.art-demo-tag-sm{padding:2px 6px;font-size:8.5px}
-
-/* ---- comment toggle (header) ---- */
-.art-comment-toggle{flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-2);border-radius:999px;padding:5px 9px;cursor:pointer;font:600 11px/1 var(--mono)}
-.art-comment-toggle:hover{border-color:var(--accent-line);color:var(--accent-strong)}
-.art-comment-toggle[aria-expanded="true"]{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-strong)}
-.art-comment-count{min-width:9px;text-align:center}
-
-/* ---- status badges (plan) ---- */
-.art-badge{flex:0 0 auto;font:600 10px/1 var(--mono);text-transform:uppercase;letter-spacing:.03em;padding:4px 8px;border-radius:999px;white-space:nowrap}
-.art-badge-todo{background:var(--surface-3);color:var(--ink-3)}
-.art-badge-doing{background:var(--info-soft);color:var(--info)}
-.art-badge-done{background:var(--good-soft);color:var(--good)}
-.art-badge-skip{background:var(--surface-3);color:var(--ink-3)}
-
-/* ---- plan ---- */
-.art-plan-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0}
-.art-plan-step{display:flex;align-items:center;gap:8px;padding:8px 4px;border-top:1px solid var(--line)}
-.art-plan-step:first-child{border-top:none}
-.art-plan-num{flex:0 0 auto;font:600 12px/1 var(--mono);color:var(--ink-3);min-width:18px}
-.art-plan-text{flex:1;font-size:13px;color:var(--ink);min-width:0}
-.art-status-done .art-plan-text{color:var(--ink-2)}
-.art-status-skip .art-plan-text{color:var(--ink-3);text-decoration:line-through}
-
-/* ---- checklist ---- */
-.art-check-list{display:flex;flex-direction:column;gap:0}
-.art-check-item{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 4px;border-top:1px solid var(--line)}
-.art-check-item:first-child{border-top:none}
-.art-check-box{flex:0 0 auto;width:18px;height:18px;border-radius:5px;border:1.5px solid var(--line-strong);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--good);line-height:1}
-.art-check-item.on .art-check-box{background:var(--good-soft);border-color:var(--good)}
-.art-check-text{flex:1;min-width:120px;font-size:13px;color:var(--ink)}
-.art-check-item.on .art-check-text{color:var(--ink-2)}
-.art-check-note{flex-basis:100%;font-size:12px;color:var(--ink-3);padding-left:26px;font-style:italic}
-
-/* ---- walkthrough ---- */
-.art-wt{display:flex;flex-direction:column;gap:14px}
-.art-wt-section{position:relative;padding-right:24px}
-.art-wt-heading{font:640 13px/1.3 var(--sans);color:var(--ink);margin-bottom:4px}
-.art-wt-body{font-size:13px;line-height:1.6;color:var(--ink-2);white-space:pre-wrap;word-break:break-word}
-.art-wt-section .art-anchor-comment{position:absolute;top:0;right:0}
-
-/* ---- screenshot ---- */
-.art-shot{display:flex;flex-direction:column;gap:8px}
-.art-shot-img{max-width:100%;border-radius:var(--r-sm);border:1px solid var(--line-2);cursor:zoom-in;display:block}
-.art-shot-cap{font-size:12px;color:var(--ink-3)}
-.art-lightbox{position:fixed;inset:0;z-index:900;background:color-mix(in srgb,var(--ink) 72%,transparent);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;cursor:zoom-out}
-.art-lightbox img{max-width:100%;max-height:80vh;border-radius:var(--r-sm);box-shadow:var(--shadow-lg);cursor:default}
-.art-lightbox-cap{margin-top:12px;color:var(--paper);font-size:13px;text-align:center;max-width:640px}
-.art-lightbox-x{position:absolute;top:16px;right:18px;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);color:var(--paper);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
-
-/* ---- recording ---- */
-.art-rec{display:flex;flex-direction:column;gap:8px}
-.art-rec-video{max-width:100%;border-radius:var(--r-sm);border:1px solid var(--line-2);background:#000;display:block}
-.art-rec-placeholder{position:relative;border-radius:var(--r-sm);border:1px solid var(--line-2);background:var(--surface-2);min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;overflow:hidden}
-.art-rec-poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.5}
-.art-rec-play{position:relative;width:44px;height:44px;border-radius:50%;background:color-mix(in srgb,var(--ink) 55%,transparent);color:var(--paper);display:flex;align-items:center;justify-content:center}
-.art-rec-play .art-ic{width:20px;height:20px}
-.art-rec-nomedia{position:relative;font-size:11.5px;color:var(--ink-3);background:var(--surface);padding:3px 9px;border-radius:999px}
-.art-rec-meta{display:flex;gap:10px;flex-wrap:wrap;font:500 11.5px/1.4 var(--mono);color:var(--ink-3)}
-
-/* ---- file-change (default: plain language) ---- */
-.art-fc-path{display:flex;align-items:center;gap:8px;margin-bottom:10px;font:600 12.5px/1.3 var(--mono);color:var(--ink)}
-.art-fc-path .art-ic-wrap{width:22px;height:22px}
-.art-fc-path .art-ic{width:13px;height:13px}
-.art-fc-path-txt{word-break:break-all}
-.art-fc-lang{margin-left:auto;flex:0 0 auto;font:600 10px/1 var(--mono);text-transform:uppercase;color:var(--ink-3);background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:3px 8px}
-.art-fc-plain{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-@media(max-width:560px){.art-fc-plain{grid-template-columns:1fr}}
-.art-fc-plain-block{border-radius:var(--r-sm);padding:11px 13px;border:1px solid var(--line-2);font-size:12.5px;line-height:1.55}
-.art-fc-plain-block p{margin:0}
-.art-fc-before{background:var(--surface-2);color:var(--ink-2)}
-.art-fc-after{background:var(--accent-soft);border-color:var(--accent-line);color:var(--ink)}
-.art-fc-plain-lbl{display:block;font:700 10px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);margin-bottom:6px}
-.art-fc-after .art-fc-plain-lbl{color:var(--accent-strong)}
-.art-fc-plain-empty{grid-column:1/-1;color:var(--ink-3);font-style:italic;font-size:12.5px}
-
-/* ---- file-change: "Show the code" expander + real diff ---- */
-.art-fc-toggle{margin-top:10px;display:inline-flex;align-items:center;gap:6px;font:600 12px/1 var(--sans);padding:7px 12px;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);cursor:pointer;transition:border-color .15s,color .15s,background .15s}
-.art-fc-toggle:hover{border-color:var(--accent-line);color:var(--accent-strong)}
-.art-fc-toggle[aria-expanded="true"]{background:var(--accent);color:var(--paper);border-color:var(--accent)}
-.art-fc-diffhost{margin-top:10px}
-.art-diff{font:12px/1.6 var(--mono);border:1px solid var(--line-2);border-radius:var(--r-sm);overflow:auto;max-height:420px;background:var(--surface-2)}
-.art-diff-row{display:flex;align-items:flex-start;white-space:pre;padding:0 8px;position:relative}
-.art-diff-gl,.art-diff-gr{flex:0 0 32px;text-align:right;color:var(--ink-3);opacity:.6;user-select:none;padding-right:6px}
-.art-diff-mark{flex:0 0 14px;text-align:center;color:var(--ink-3)}
-.art-diff-code{white-space:pre-wrap;word-break:break-word;flex:1;color:var(--ink);padding-right:22px}
-.art-diff-ctx{color:var(--ink-2)}
-.art-diff-add{background:color-mix(in srgb,var(--good) 12%,transparent)}
-.art-diff-add .art-diff-mark{color:var(--good)}
-.art-diff-del{background:color-mix(in srgb,var(--accent) 10%,transparent)}
-.art-diff-del .art-diff-mark{color:var(--accent-strong)}
-.art-diff-empty{padding:10px;color:var(--ink-3);font-style:italic}
-.art-diff-row .art-diff-anchor-btn{opacity:0;position:absolute;right:2px;top:1px}
-.art-diff-row:hover .art-diff-anchor-btn{opacity:1}
-
-/* ---- summary ---- */
-.art-summary-text{font-size:13.5px;line-height:1.6;color:var(--ink);white-space:pre-wrap;word-break:break-word}
-
-/* ---- unsupported type fallback ---- */
-.art-unknown{color:var(--ink-3);font-style:italic;font-size:12.5px}
-
-/* ---- anchor comment affordance (per row/section/line) ---- */
-.art-anchor-comment{width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--ink-3);cursor:pointer;border-radius:5px;flex:0 0 auto;padding:0}
-.art-anchor-comment:hover{background:var(--surface-3);color:var(--accent-strong)}
-
-/* ---- comment thread (Google-Docs style) ---- */
-.art-thread-host{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line-2)}
-.art-comment-list{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
-.art-comment{padding:8px 10px;background:var(--surface-2);border-radius:var(--r-sm)}
-.art-comment-head{display:flex;align-items:center;gap:8px;margin-bottom:3px;font:600 11px/1 var(--mono)}
-.art-comment-author-user{color:var(--accent-strong)}
-.art-comment-author-agent{color:var(--violet)}
-.art-comment-at{color:var(--ink-3);font-weight:500}
-.art-comment-anchor{margin-left:auto;color:var(--ink-3);font-weight:500;font-style:italic;white-space:nowrap;padding-left:8px}
-.art-comment-text{font-size:12.5px;line-height:1.5;color:var(--ink);white-space:pre-wrap;word-break:break-word}
-.art-comment-empty{font-size:12.5px;color:var(--ink-3);font-style:italic;padding:6px 2px}
-.art-comment-pending{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:11.5px;color:var(--accent-strong);background:var(--accent-soft);border-radius:999px;padding:3px 4px 3px 10px;width:fit-content}
-.art-comment-pending-x{width:16px;height:16px;border:none;background:transparent;color:var(--accent-strong);cursor:pointer;font-size:13px;line-height:1;padding:0}
-.art-comment-form{display:flex;flex-direction:column;gap:6px}
-.art-comment-input{font:13px/1.5 var(--sans);color:var(--ink);border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:8px 10px;resize:vertical;min-height:44px;background:var(--surface)}
-.art-comment-input:focus{outline:none;border-color:var(--accent-line);box-shadow:0 0 0 3px var(--accent-soft)}
-.art-comment-send{align-self:flex-end;font:600 12px/1 var(--sans);padding:7px 14px;border-radius:var(--r-sm);border:1px solid var(--accent);background:var(--accent);color:var(--paper);cursor:pointer}
-.art-comment-send:hover{background:var(--accent-strong);border-color:var(--accent-strong)}
-
-/* ---- compact mode (Board / Gate one-card summary) ---- */
-.art-card.art-compact{display:flex;align-items:center;gap:9px;padding:9px 12px;flex-wrap:nowrap}
-.art-compact .art-ic-wrap{width:24px;height:24px}
-.art-compact .art-ic{width:13px;height:13px}
-.art-compact-title{font-size:12.5px;font-weight:620;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
-.art-compact-state{margin-left:auto;font:600 11px/1 var(--mono);color:var(--ink-3);white-space:nowrap}
-.art-compact-cc{font:500 11px/1 var(--mono);color:var(--ink-3);white-space:nowrap}
-</style>
 <style id="w1b-verify">
 /* module: dwn (done_when editor + SideVerify badge) */
 /* prefix: .dwn- */
@@ -22846,6 +22682,413 @@ body.gt2-lock{overflow:hidden}
   .bwb-actions{flex-direction:column;}
   .bwb-btn{width:100%;}
 }
+</style>
+<style id="w4b-brainreal">
+/* ==========================================================================
+   W4-B  Brain reads real facts  --  prefix .brf-
+   Additive layer over buildBrainView(). Does not redefine any .brn- rule --
+   it only adds new .brf- rules and applies existing .brn- classes (already
+   shipped, stable) to elements this module creates, so real rows sit in the
+   Recent learnings feed looking like first-class rows, not a bolt-on.
+   Tokens only, no hardcoded colors. Demo = warn family (matches .art-demo-tag
+   / .bwb-demo / .bud-lg-demo-tag). Real = good family.
+   ========================================================================== */
+
+.brf-banner{margin-top:9px;padding:9px 11px;border:1px solid var(--line-2);border-radius:var(--r-sm);background:var(--surface-2)}
+.brf-banner-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+
+.brf-chip-real{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:600;color:var(--good);background:var(--good-soft);border:1px solid var(--good);border-radius:var(--r-sm);padding:5px 10px}
+.brf-chip-real .i{color:var(--good);font-size:.95rem}
+.brf-chip-real b{font-weight:700}
+
+.brf-banner-note{display:inline-flex;align-items:center;gap:7px;font-size:.74rem;color:var(--ink-3);line-height:1.4}
+
+.brf-tag-demo{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.05em;color:var(--warn);background:var(--warn-soft);border:1px solid var(--warn);border-radius:999px;padding:3px 7px;white-space:nowrap}
+.brf-tag-inline{margin-right:5px;vertical-align:1px;display:inline-block}
+
+.brf-tag-real{font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.05em;color:var(--good);background:var(--good-soft);border:1px solid var(--good);border-radius:999px;padding:3px 7px;white-space:nowrap;margin-right:5px;vertical-align:1px;display:inline-block}
+
+.brf-tag-viademo{font-size:.68rem;color:var(--ink-3);font-style:italic}
+
+.brf-empty{margin-top:8px;font-size:.78rem;color:var(--ink-2);line-height:1.55;background:var(--paper);border:1px dashed var(--line-strong);border-radius:var(--r-sm);padding:10px 12px}
+.brf-empty-t{font-weight:600;color:var(--ink);margin-bottom:3px}
+.brf-empty-d{color:var(--ink-2)}
+
+.brf-real-wrap{margin-bottom:1px}
+.brf-inline-empty{font-size:.74rem;color:var(--ink-3);padding:8px 0;border-top:1px solid var(--line)}
+.brf-more-note{font-size:.7rem;color:var(--ink-3);padding:6px 0 2px;font-family:var(--mono)}
+
+.brf-src-body{max-height:0;overflow:hidden;opacity:0;transition:max-height .2s ease,opacity .18s ease;border-radius:var(--r-sm)}
+.brf-src-body.on{max-height:420px;overflow-y:auto;opacity:1;margin:0 0 8px;border:1px solid var(--line);background:var(--paper);padding:2px}
+
+.brf-rail{position:absolute;top:10px;right:10px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 6px;border-radius:var(--r-sm);background:color-mix(in srgb,var(--surface) 88%,transparent);border:1px solid var(--line-2);box-shadow:var(--shadow-sm);z-index:5}
+.brf-rail-h{color:var(--good);font-size:.9rem;display:flex;align-items:center;justify-content:center}
+.brf-rail-h .i{color:var(--good)}
+.brf-rail-dot{width:10px;height:10px;border-radius:50%;flex:none;border:1px solid var(--good);background:var(--good-soft);cursor:pointer;padding:0;transition:transform .12s,background .12s}
+.brf-rail-dot:hover{background:var(--good);transform:scale(1.25)}
+.brf-rail-more{font-family:var(--mono);font-size:8.5px;color:var(--ink-3)}
+
+@media(max-width:520px){
+  .brf-banner-row{flex-direction:column;align-items:flex-start}
+  .brf-rail{top:6px;right:6px;padding:6px 5px}
+}
+</style>
+<style id="w4a-acp">
+/* =========================================================================
+   W4-A  --  ACP driver  (prefix .acp-)
+   Agent picker + the few live-session affordances the driver owns.
+   Everything else routes into surfaces that already have their own CSS
+   (.art- artifacts, .gt2- gate, .nd2- designer, .ndz- transcript).
+   Uses the house tokens only -- no hardcoded palette.
+   ========================================================================= */
+
+.acp-picker{
+  display:flex;flex-direction:column;gap:10px;
+  font-family:var(--sans);color:var(--ink);
+}
+
+/* ---------------------------------------------------------------- head */
+.acp-head{display:flex;flex-direction:column;gap:3px}
+.acp-h-t{font-size:13.5px;font-weight:600;letter-spacing:-.01em;color:var(--ink)}
+.acp-h-s{font-size:11.5px;line-height:1.5;color:var(--ink-3)}
+
+/* --------------------------------------------------------------- state */
+.acp-state{
+  display:flex;align-items:flex-start;gap:8px;
+  font-size:12px;line-height:1.55;
+  padding:9px 11px;border-radius:var(--r-sm);
+  border:1px solid var(--line-2);background:var(--surface-2);color:var(--ink-2);
+}
+.acp-state:empty{display:none}
+.acp-quiet{background:var(--surface-2);border-color:var(--line-2);color:var(--ink-2)}
+.acp-busy{background:var(--surface-2);border-color:var(--line-2);color:var(--ink-3);align-items:center}
+.acp-bad{background:var(--accent-soft);border-color:var(--accent-line);color:var(--ink)}
+.acp-ic{flex:0 0 auto;display:flex;color:var(--accent-strong);margin-top:1px}
+.acp-ic svg{display:block}
+
+.acp-spin{
+  flex:0 0 auto;width:12px;height:12px;border-radius:50%;
+  border:2px solid var(--line-strong);border-top-color:var(--accent);
+  animation:acp-spin .7s linear infinite;
+}
+@keyframes acp-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){
+  .acp-spin{animation-duration:2.4s}
+}
+
+/* ---------------------------------------------------------- agent list */
+.acp-list{display:flex;flex-direction:column;gap:5px}
+.acp-grp{
+  font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--ink-3);padding:8px 2px 2px;
+}
+.acp-grp-off{color:var(--muted)}
+
+.acp-row{
+  display:flex;align-items:center;gap:9px;width:100%;text-align:left;
+  padding:9px 10px;border-radius:var(--r-sm);
+  border:1px solid var(--line-2);background:var(--surface);
+  transition:border-color .16s,background .16s,transform .16s,box-shadow .16s;
+}
+.acp-row-ic{
+  flex:0 0 auto;width:26px;height:26px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--surface-2);color:var(--ink-3);
+}
+.acp-row-m{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.acp-row-n{font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acp-row-d{font-size:11px;color:var(--ink-3);line-height:1.45}
+
+/* available -- the only clickable row */
+.acp-on{cursor:pointer}
+.acp-on:hover{
+  border-color:var(--accent-line);background:var(--surface);
+  box-shadow:var(--shadow-sm);transform:translateY(-1px);
+}
+.acp-on:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.acp-on .acp-row-ic{background:var(--accent-soft);color:var(--accent-strong)}
+.acp-row-go{
+  flex:0 0 auto;display:flex;align-items:center;gap:5px;
+  font-size:11.5px;font-weight:600;color:var(--accent-strong);
+  padding:5px 9px;border-radius:var(--r-xs);
+  background:var(--accent-soft);border:1px solid var(--accent-line);
+}
+.acp-row-go svg{display:block}
+
+/* unavailable -- honest, never dressed up as usable */
+.acp-off{background:var(--surface-2);border-style:dashed;border-color:var(--line-2);align-items:flex-start}
+.acp-off .acp-row-n{color:var(--ink-2);font-weight:500}
+.acp-off .acp-row-ic{opacity:.55;margin-top:1px}
+.acp-why{color:var(--ink-3)}
+.acp-row-na{
+  flex:0 0 auto;font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted);border:1px solid var(--line-2);border-radius:999px;padding:3px 7px;margin-top:2px;
+}
+.acp-inst{display:flex;align-items:center;gap:6px;margin-top:5px;flex-wrap:wrap}
+.acp-cmd{
+  font-family:var(--mono);font-size:10.5px;color:var(--ink-2);
+  background:var(--surface-3);border:1px solid var(--line-2);border-radius:var(--r-xs);
+  padding:3px 6px;word-break:break-all;
+}
+.acp-cpy{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:10.5px;color:var(--ink-3);
+  border:1px solid var(--line-2);border-radius:var(--r-xs);background:var(--surface);
+  padding:3px 7px;cursor:pointer;transition:color .16s,border-color .16s;
+}
+.acp-cpy:hover{color:var(--accent-strong);border-color:var(--accent-line)}
+.acp-cpy svg{display:block}
+
+.acp-flag{
+  flex:0 0 auto;font-size:10px;color:var(--warn);
+  background:var(--warn-soft);border-radius:999px;padding:2px 7px;
+}
+
+/* -------------------------------------------------------- live session */
+.acp-live{display:flex;flex-direction:column;gap:5px}
+.acp-live:empty{display:none}
+.acp-sess{
+  display:flex;align-items:center;gap:9px;
+  padding:8px 10px;border-radius:var(--r-sm);
+  border:1px solid var(--line-2);background:var(--surface);
+}
+.acp-sess-m{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0}
+.acp-sess-n{font-size:12.5px;font-weight:600;color:var(--ink)}
+.acp-sess-d{font-size:11px;color:var(--ink-3)}
+.acp-dot{
+  flex:0 0 auto;width:7px;height:7px;border-radius:50%;background:var(--muted);
+}
+.acp-s-running{border-color:var(--accent-line);background:var(--accent-soft)}
+.acp-s-running .acp-dot{background:var(--accent);animation:acp-pulse 1.4s ease-in-out infinite}
+.acp-s-idle .acp-dot{background:var(--good)}
+.acp-s-closed{opacity:.6}
+@keyframes acp-pulse{0%,100%{opacity:1}50%{opacity:.32}}
+@media (prefers-reduced-motion:reduce){
+  .acp-s-running .acp-dot{animation:none}
+}
+.acp-stop{
+  flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;
+  font-size:11.5px;font-weight:600;color:var(--ink-2);
+  border:1px solid var(--line-strong);border-radius:var(--r-xs);background:var(--surface);
+  padding:5px 9px;cursor:pointer;transition:color .16s,border-color .16s,background .16s;
+}
+.acp-stop:hover{color:var(--accent-strong);border-color:var(--accent-line);background:var(--accent-soft)}
+.acp-stop svg{display:block}
+
+/* ---------------------------------------------------------------- foot */
+.acp-foot{
+  font-family:var(--mono);font-size:10px;letter-spacing:.05em;
+  color:var(--muted);padding-top:2px;
+}
+.acp-foot:empty{display:none}
+
+/* ------------------------------------------- launcher inside the designer */
+/* The picker mounts itself from the Node Designer v2 hook, so W4-A is
+   reachable without splicing a host call site. */
+.nd2-root .acp-launch.on{border-color:var(--accent-line);background:var(--accent-soft);color:var(--accent-strong)}
+.acp-panel{
+  position:absolute;top:96px;right:18px;width:min(400px,calc(100vw - 36px));
+  max-height:calc(100% - 128px);display:flex;flex-direction:column;
+  background:var(--surface);border:1px solid var(--line-strong);border-radius:var(--r-md);
+  box-shadow:var(--shadow-lg);z-index:60;overflow:hidden;
+}
+.acp-panel-head{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding:9px 12px;border-bottom:1px solid var(--line);
+  font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);
+}
+.acp-panel-x{
+  border:none;background:transparent;color:var(--ink-3);font-size:17px;line-height:1;
+  padding:2px 5px;border-radius:var(--r-xs);cursor:pointer;
+}
+.acp-panel-x:hover{color:var(--ink);background:var(--surface-2)}
+.acp-panel-body{padding:12px;overflow:auto}
+
+/* ---------------------------------- bubbles + terminal lines we inject */
+/* Scoped to the legacy transcript hooks so the agent stream is visibly
+   distinct from Side's own scripted lines without forking the component. */
+.nd2-root .ndz-b .acp-bub{white-space:pre-wrap}
+.nd2-root .acp-thought{
+  background:var(--surface-2);color:var(--ink-3);
+  font-size:12.5px;font-style:italic;border-style:dashed;
+}
+.nd2-root .ndz-b.sys.acp-sys{color:var(--ink-2)}
+.nd2-root .ndz-b.sys.acp-sys:before{background:var(--accent)}
+.nd2-root .acp-bic{background:var(--nc,var(--accent))}
+.nd2-term .acp-tl{color:var(--ink-2)}
+
+/* ------------------------------------------------------------- narrow */
+@media (max-width:560px){
+  .acp-row{padding:8px 9px;gap:8px}
+  .acp-row-go span{display:none}
+  .acp-row-go{padding:6px 8px}
+  .acp-row-na{display:none}
+  .acp-cmd{font-size:10px}
+}
+</style>
+<style id="w1a-artifacts">
+/* ============================================================
+   W1-A ARTIFACT SYSTEM (.art-)
+   window.SideArtifacts renderers. Prefix: art-. Uses house
+   tokens only (--surface, --ink, --line, --shadow, --r-*, etc).
+   ============================================================ */
+
+/* ---- card shell ---- */
+.art-card{background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r-md);box-shadow:var(--shadow-sm);padding:14px 16px 16px;font-family:var(--sans);color:var(--ink);margin:0 0 12px;position:relative}
+.art-card:last-child{margin-bottom:0}
+
+/* ---- header ---- */
+.art-hd{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px}
+.art-hd-txt{flex:1;min-width:0}
+.art-title{font-size:14.5px;font-weight:640;color:var(--ink);line-height:1.3;word-break:break-word}
+.art-meta{font:500 11px/1.4 var(--mono);color:var(--ink-3);text-transform:uppercase;letter-spacing:.02em;margin-top:2px}
+.art-body{font-size:13px;line-height:1.55;color:var(--ink-2)}
+
+/* ---- type glyph ---- */
+.art-ic-wrap{flex:0 0 auto;width:30px;height:30px;border-radius:var(--r-sm);background:var(--accent-soft);color:var(--accent-strong);display:flex;align-items:center;justify-content:center}
+.art-ic{width:16px;height:16px;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;fill:none;flex:none}
+.art-ic-sm{width:13px;height:13px}
+.art-type-plan .art-ic-wrap{background:var(--info-soft);color:var(--info)}
+.art-type-checklist .art-ic-wrap{background:var(--good-soft);color:var(--good)}
+.art-type-walkthrough .art-ic-wrap{background:var(--violet-soft);color:var(--violet)}
+.art-type-screenshot .art-ic-wrap{background:var(--sky-soft);color:var(--sky)}
+.art-type-recording .art-ic-wrap{background:var(--pink-soft);color:var(--pink)}
+.art-type-file-change .art-ic-wrap{background:var(--accent-soft);color:var(--accent-strong)}
+.art-type-summary .art-ic-wrap{background:var(--sun-soft);color:var(--sun)}
+
+/* ---- demo tag ---- */
+.art-demo-tag{flex:0 0 auto;font:700 9.5px/1 var(--mono);letter-spacing:.05em;color:var(--warn);background:var(--warn-soft);border:1px solid var(--warn);border-radius:999px;padding:3px 7px;align-self:flex-start;white-space:nowrap}
+.art-demo-tag-sm{padding:2px 6px;font-size:8.5px}
+
+/* ---- comment toggle (header) ---- */
+.art-comment-toggle{flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;border:1px solid var(--line);background:var(--surface-2);color:var(--ink-2);border-radius:999px;padding:5px 9px;cursor:pointer;font:600 11px/1 var(--mono)}
+.art-comment-toggle:hover{border-color:var(--accent-line);color:var(--accent-strong)}
+.art-comment-toggle[aria-expanded="true"]{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent-strong)}
+.art-comment-count{min-width:9px;text-align:center}
+
+/* ---- status badges (plan) ---- */
+.art-badge{flex:0 0 auto;font:600 10px/1 var(--mono);text-transform:uppercase;letter-spacing:.03em;padding:4px 8px;border-radius:999px;white-space:nowrap}
+.art-badge-todo{background:var(--surface-3);color:var(--ink-3)}
+.art-badge-doing{background:var(--info-soft);color:var(--info)}
+.art-badge-done{background:var(--good-soft);color:var(--good)}
+.art-badge-skip{background:var(--surface-3);color:var(--ink-3)}
+
+/* ---- plan ---- */
+.art-plan-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0}
+.art-plan-step{display:flex;align-items:center;gap:8px;padding:8px 4px;border-top:1px solid var(--line)}
+.art-plan-step:first-child{border-top:none}
+.art-plan-num{flex:0 0 auto;font:600 12px/1 var(--mono);color:var(--ink-3);min-width:18px}
+.art-plan-text{flex:1;font-size:13px;color:var(--ink);min-width:0}
+.art-status-done .art-plan-text{color:var(--ink-2)}
+.art-status-skip .art-plan-text{color:var(--ink-3);text-decoration:line-through}
+
+/* ---- checklist ---- */
+.art-check-list{display:flex;flex-direction:column;gap:0}
+.art-check-item{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 4px;border-top:1px solid var(--line)}
+.art-check-item:first-child{border-top:none}
+.art-check-box{flex:0 0 auto;width:18px;height:18px;border-radius:5px;border:1.5px solid var(--line-strong);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--good);line-height:1}
+.art-check-item.on .art-check-box{background:var(--good-soft);border-color:var(--good)}
+.art-check-text{flex:1;min-width:120px;font-size:13px;color:var(--ink)}
+.art-check-item.on .art-check-text{color:var(--ink-2)}
+.art-check-note{flex-basis:100%;font-size:12px;color:var(--ink-3);padding-left:26px;font-style:italic}
+
+/* ---- walkthrough ---- */
+.art-wt{display:flex;flex-direction:column;gap:14px}
+.art-wt-section{position:relative;padding-right:24px}
+.art-wt-heading{font:640 13px/1.3 var(--sans);color:var(--ink);margin-bottom:4px}
+.art-wt-body{font-size:13px;line-height:1.6;color:var(--ink-2);white-space:pre-wrap;word-break:break-word}
+.art-wt-section .art-anchor-comment{position:absolute;top:0;right:0}
+
+/* ---- screenshot ---- */
+.art-shot{display:flex;flex-direction:column;gap:8px}
+.art-shot-img{max-width:100%;border-radius:var(--r-sm);border:1px solid var(--line-2);cursor:zoom-in;display:block}
+.art-shot-cap{font-size:12px;color:var(--ink-3)}
+.art-lightbox{position:fixed;inset:0;z-index:900;background:color-mix(in srgb,var(--ink) 72%,transparent);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;cursor:zoom-out}
+.art-lightbox img{max-width:100%;max-height:80vh;border-radius:var(--r-sm);box-shadow:var(--shadow-lg);cursor:default}
+.art-lightbox-cap{margin-top:12px;color:var(--paper);font-size:13px;text-align:center;max-width:640px}
+.art-lightbox-x{position:absolute;top:16px;right:18px;width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);color:var(--paper);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;line-height:1}
+
+/* ---- recording ---- */
+.art-rec{display:flex;flex-direction:column;gap:8px}
+.art-rec-video{max-width:100%;border-radius:var(--r-sm);border:1px solid var(--line-2);background:#000;display:block}
+.art-rec-placeholder{position:relative;border-radius:var(--r-sm);border:1px solid var(--line-2);background:var(--surface-2);min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;overflow:hidden}
+.art-rec-poster{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.5}
+.art-rec-play{position:relative;width:44px;height:44px;border-radius:50%;background:color-mix(in srgb,var(--ink) 55%,transparent);color:var(--paper);display:flex;align-items:center;justify-content:center}
+.art-rec-play .art-ic{width:20px;height:20px}
+.art-rec-nomedia{position:relative;font-size:11.5px;color:var(--ink-3);background:var(--surface);padding:3px 9px;border-radius:999px}
+.art-rec-meta{display:flex;gap:10px;flex-wrap:wrap;font:500 11.5px/1.4 var(--mono);color:var(--ink-3)}
+
+/* ---- file-change (default: plain language) ---- */
+.art-fc-path{display:flex;align-items:center;gap:8px;margin-bottom:10px;font:600 12.5px/1.3 var(--mono);color:var(--ink)}
+.art-fc-path .art-ic-wrap{width:22px;height:22px}
+.art-fc-path .art-ic{width:13px;height:13px}
+.art-fc-path-txt{word-break:break-all}
+.art-fc-lang{margin-left:auto;flex:0 0 auto;font:600 10px/1 var(--mono);text-transform:uppercase;color:var(--ink-3);background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:3px 8px}
+.art-fc-plain{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:560px){.art-fc-plain{grid-template-columns:1fr}}
+.art-fc-plain-block{border-radius:var(--r-sm);padding:11px 13px;border:1px solid var(--line-2);font-size:12.5px;line-height:1.55}
+.art-fc-plain-block p{margin:0}
+.art-fc-before{background:var(--surface-2);color:var(--ink-2)}
+.art-fc-after{background:var(--accent-soft);border-color:var(--accent-line);color:var(--ink)}
+.art-fc-plain-lbl{display:block;font:700 10px/1 var(--mono);text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3);margin-bottom:6px}
+.art-fc-after .art-fc-plain-lbl{color:var(--accent-strong)}
+.art-fc-plain-empty{grid-column:1/-1;color:var(--ink-3);font-style:italic;font-size:12.5px}
+
+/* ---- file-change: "Show the code" expander + real diff ---- */
+.art-fc-toggle{margin-top:10px;display:inline-flex;align-items:center;gap:6px;font:600 12px/1 var(--sans);padding:7px 12px;border-radius:var(--r-sm);border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);cursor:pointer;transition:border-color .15s,color .15s,background .15s}
+.art-fc-toggle:hover{border-color:var(--accent-line);color:var(--accent-strong)}
+.art-fc-toggle[aria-expanded="true"]{background:var(--accent);color:var(--paper);border-color:var(--accent)}
+.art-fc-diffhost{margin-top:10px}
+.art-diff{font:12px/1.6 var(--mono);border:1px solid var(--line-2);border-radius:var(--r-sm);overflow:auto;max-height:420px;background:var(--surface-2)}
+.art-diff-row{display:flex;align-items:flex-start;white-space:pre;padding:0 8px;position:relative}
+.art-diff-gl,.art-diff-gr{flex:0 0 32px;text-align:right;color:var(--ink-3);opacity:.6;user-select:none;padding-right:6px}
+.art-diff-mark{flex:0 0 14px;text-align:center;color:var(--ink-3)}
+.art-diff-code{white-space:pre-wrap;word-break:break-word;flex:1;color:var(--ink);padding-right:22px}
+.art-diff-ctx{color:var(--ink-2)}
+.art-diff-add{background:color-mix(in srgb,var(--good) 12%,transparent)}
+.art-diff-add .art-diff-mark{color:var(--good)}
+.art-diff-del{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.art-diff-del .art-diff-mark{color:var(--accent-strong)}
+.art-diff-empty{padding:10px;color:var(--ink-3);font-style:italic}
+.art-diff-row .art-diff-anchor-btn{opacity:0;position:absolute;right:2px;top:1px}
+.art-diff-row:hover .art-diff-anchor-btn{opacity:1}
+
+/* ---- summary ---- */
+.art-summary-text{font-size:13.5px;line-height:1.6;color:var(--ink);white-space:pre-wrap;word-break:break-word}
+
+/* ---- unsupported type fallback ---- */
+.art-unknown{color:var(--ink-3);font-style:italic;font-size:12.5px}
+
+/* ---- anchor comment affordance (per row/section/line) ---- */
+.art-anchor-comment{width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;border:none;background:transparent;color:var(--ink-3);cursor:pointer;border-radius:5px;flex:0 0 auto;padding:0}
+.art-anchor-comment:hover{background:var(--surface-3);color:var(--accent-strong)}
+
+/* ---- comment thread (Google-Docs style) ---- */
+.art-thread-host{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line-2)}
+.art-comment-list{display:flex;flex-direction:column;gap:10px;margin-bottom:10px}
+.art-comment{padding:8px 10px;background:var(--surface-2);border-radius:var(--r-sm)}
+.art-comment-head{display:flex;align-items:center;gap:8px;margin-bottom:3px;font:600 11px/1 var(--mono)}
+.art-comment-author-user{color:var(--accent-strong)}
+.art-comment-author-agent{color:var(--violet)}
+.art-comment-at{color:var(--ink-3);font-weight:500}
+.art-comment-anchor{margin-left:auto;color:var(--ink-3);font-weight:500;font-style:italic;white-space:nowrap;padding-left:8px}
+.art-comment-text{font-size:12.5px;line-height:1.5;color:var(--ink);white-space:pre-wrap;word-break:break-word}
+.art-comment-empty{font-size:12.5px;color:var(--ink-3);font-style:italic;padding:6px 2px}
+.art-comment-pending{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:11.5px;color:var(--accent-strong);background:var(--accent-soft);border-radius:999px;padding:3px 4px 3px 10px;width:fit-content}
+.art-comment-pending-x{width:16px;height:16px;border:none;background:transparent;color:var(--accent-strong);cursor:pointer;font-size:13px;line-height:1;padding:0}
+.art-comment-form{display:flex;flex-direction:column;gap:6px}
+.art-comment-input{font:13px/1.5 var(--sans);color:var(--ink);border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:8px 10px;resize:vertical;min-height:44px;background:var(--surface)}
+.art-comment-input:focus{outline:none;border-color:var(--accent-line);box-shadow:0 0 0 3px var(--accent-soft)}
+.art-comment-send{align-self:flex-end;font:600 12px/1 var(--sans);padding:7px 14px;border-radius:var(--r-sm);border:1px solid var(--accent);background:var(--accent);color:var(--paper);cursor:pointer}
+.art-comment-send:hover{background:var(--accent-strong);border-color:var(--accent-strong)}
+
+/* ---- compact mode (Board / Gate one-card summary) ---- */
+.art-card.art-compact{display:flex;align-items:center;gap:9px;padding:9px 12px;flex-wrap:nowrap}
+.art-compact .art-ic-wrap{width:24px;height:24px}
+.art-compact .art-ic{width:13px;height:13px}
+.art-compact-title{font-size:12.5px;font-weight:620;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px}
+.art-compact-state{margin-left:auto;font:600 11px/1 var(--mono);color:var(--ink-3);white-space:nowrap}
+.art-compact-cc{font:500 11px/1 var(--mono);color:var(--ink-3);white-space:nowrap}
 </style>
 <!-- ==SCRIPT-MARK== -->
 <script data-mod="w3d-brainwrite">
@@ -29107,6 +29350,1523 @@ window.SideVerify = {
 
 })();
 </script>
+<script data-mod="w4b-brainreal">
+(function(){
+if(window.__sideBrf)return;window.__sideBrf=1;
+
+/* ============================================================
+   W4-B  Brain reads real facts  --  prefix .brf-
+   Additive wrap over window.buildBrainView. Reads side_brain_facts
+   (written by SideBrainWrite.accept) and merges it into the Brain
+   view: header count banner, Recent learnings feed, small graph-area
+   rail. Never edits or replaces the demo dataset (BRAINFACTS /
+   NODES_DEF / SOURCES / LEARN) -- it stays, now labelled DEMO.
+   Strict ES5. Only verified window.* surfaces are touched, every
+   call guarded.
+   ============================================================ */
+
+var FACTS_KEY = "side_brain_facts";
+var MAXSHOWN = 20;
+var RAILMAX = 8;
+
+var liveRoots = [];
+
+/* ---------------------------------------------------------- utils */
+
+function esc(s){
+  return (""+(s==null?"":s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function clampTxt(s,n){
+  s = ""+(s==null?"":s);
+  return s.length>n ? s.slice(0,n-1)+"..." : s;
+}
+
+function S(k){
+  return (typeof window.svg==="function") ? window.svg(k) : "";
+}
+
+function HY(el){
+  if(typeof window.hydrate==="function"){ try{ window.hydrate(el); }catch(eHy){} }
+}
+
+function T(m){
+  if(typeof window.toast==="function"){ try{ window.toast(m); }catch(eT){} }
+}
+
+function isArr(v){
+  if(typeof Array.isArray==="function") return Array.isArray(v);
+  return Object.prototype.toString.call(v)==="[object Array]";
+}
+
+function timeAgo(ts){
+  ts = +ts||0;
+  if(!ts) return "unknown time";
+  var d = Date.now()-ts;
+  if(d<0) d=0;
+  var m = Math.floor(d/60000);
+  if(m<1) return "just now";
+  if(m<60) return m+"m ago";
+  var h = Math.floor(m/60);
+  if(h<24) return h+"h ago";
+  var days = Math.floor(h/24);
+  if(days<30) return days+"d ago";
+  var mo = Math.floor(days/30);
+  return mo+"mo ago";
+}
+
+/* -------------------------------------------------------- storage */
+
+function readFacts(){
+  try{
+    var raw = window.localStorage ? localStorage.getItem(FACTS_KEY) : null;
+    if(!raw) return [];
+    var arr = JSON.parse(raw);
+    if(!isArr(arr)) return [];
+    return arr;
+  }catch(e){ return []; }
+}
+
+function sortedFacts(){
+  var f = readFacts().slice();
+  f.sort(function(a,b){
+    var av = (a&&(a.acceptedAt||a.proposedAt))||0;
+    var bv = (b&&(b.acceptedAt||b.proposedAt))||0;
+    return bv-av;
+  });
+  return f;
+}
+
+function findFact(id){
+  var arr = sortedFacts(), i;
+  for(i=0;i<arr.length;i++){ if(arr[i] && arr[i].id===id) return arr[i]; }
+  return null;
+}
+
+/* ------------------------------------------------------ rendering */
+
+function bannerHtml(facts){
+  var n = facts.length;
+  var html = '<div class="brf-banner-row">'+
+      '<span class="brf-chip-real">'+S('brain')+' <b>'+n+'</b> real fact'+(n===1?'':'s')+' in your Brain</span>'+
+      '<span class="brf-banner-note"><span class="brf-tag-demo">DEMO</span> everything else on this page (the graph, sources, schedule, and any learning below tagged DEMO) is illustrative, not real</span>'+
+    '</div>';
+  if(!n){
+    html += '<div class="brf-empty">'+
+        '<div class="brf-empty-t">Your Brain has nothing real in it yet.</div>'+
+        '<div class="brf-empty-d">Facts land here when a completed run proposes them (up to 3 per run, each citing the artifact it came from) and you accept the proposal through the approval gate. Nothing is written without that acceptance.</div>'+
+      '</div>';
+  }
+  return html;
+}
+
+function ensureBanner(root, facts){
+  var headL = root.querySelector('.brn-head-l');
+  if(!headL) return;
+  var chips = headL.querySelector('.brn-chips');
+  var banner = headL.querySelector('.brf-banner');
+  if(!banner){
+    banner = document.createElement('div');
+    banner.className = 'brf-banner';
+    if(chips && chips.parentNode===headL && chips.nextSibling){
+      headL.insertBefore(banner, chips.nextSibling);
+    } else if(chips && chips.parentNode===headL){
+      headL.appendChild(banner);
+    } else {
+      headL.appendChild(banner);
+    }
+  }
+  banner.innerHTML = bannerHtml(facts);
+  HY(banner);
+}
+
+function realRowHtml(f){
+  var srcType = (f.source && f.source.type) || "artifact";
+  var srcTitle = (f.source && f.source.title) ? clampTxt(f.source.title,50) : "(untitled artifact)";
+  var demoNote = f.demo ? ' <span class="brf-tag-viademo" title="This fact text came from a demo-mode proposal (no API key, or a demo run), but you accepted it into your real Brain">via demo proposal</span>' : '';
+  var conf = esc(f.confidence||"medium");
+  var id = esc(""+f.id);
+  return '<div class="brn-learn brf-learn-real" style="grid-template-columns:1fr auto auto" data-brf-real="'+id+'">'+
+      '<span class="brn-learn-t"><span class="brf-tag-real">REAL</span>'+esc(f.text)+demoNote+'</span>'+
+      '<span class="brn-learn-m">from ['+esc(srcType)+'] '+esc(srcTitle)+' &middot; '+timeAgo(f.acceptedAt||f.proposedAt)+' &middot; '+conf+' confidence</span>'+
+      '<button type="button" class="brn-learn-go" data-brf-ctx="'+id+'" title="Use as context">'+S('bolt')+'</button>'+
+      '<button type="button" class="brn-learn-go" data-brf-src="'+id+'" title="Show source artifact" style="grid-column:3;grid-row:1 / span 2">'+S('folder')+'</button>'+
+    '</div>'+
+    '<div class="brf-src-body" data-brf-srcbody="'+id+'"></div>';
+}
+
+function toggleSource(wrap, id){
+  var body = wrap.querySelector('[data-brf-srcbody="'+id+'"]');
+  if(!body) return;
+  var open = (' '+body.className+' ').indexOf(' on ')>=0;
+  if(open){
+    body.className = 'brf-src-body';
+    body.innerHTML = '';
+    return;
+  }
+  body.className = 'brf-src-body on';
+  var f = findFact(id);
+  var art = null;
+  try{
+    if(f && f.source && f.source.artifactId && window.SideArtifacts && typeof window.SideArtifacts.get==="function"){
+      art = window.SideArtifacts.get(f.source.artifactId);
+    }
+  }catch(eGet){}
+  if(art && window.SideArtifacts && typeof window.SideArtifacts.render==="function"){
+    try{ window.SideArtifacts.render(art, body, { compact:true, readOnly:true }); }
+    catch(eRen){ body.textContent = "Could not render source artifact."; }
+  } else {
+    body.textContent = "Source artifact is no longer available.";
+  }
+}
+
+function wireRealRowEvents(wrap){
+  if(wrap.getAttribute('data-brf-wired')) return;
+  wrap.setAttribute('data-brf-wired','1');
+  wrap.addEventListener('click', function(e){
+    var t = e.target;
+    var ctx = t.closest ? t.closest('[data-brf-ctx]') : null;
+    if(ctx){
+      var cid = ctx.getAttribute('data-brf-ctx');
+      var cf = findFact(cid);
+      if(cf && typeof window.sideBrainChipAdd==="function"){ window.sideBrainChipAdd(cf.text); }
+      return;
+    }
+    var srcBtn = t.closest ? t.closest('[data-brf-src]') : null;
+    if(srcBtn){
+      toggleSource(wrap, srcBtn.getAttribute('data-brf-src'));
+      return;
+    }
+  });
+}
+
+function findLearnPanel(root){
+  var side = root.querySelector('.brn-side');
+  if(!side) return null;
+  var panels = side.querySelectorAll('.brn-c2'), i, hEl, txt;
+  for(i=0;i<panels.length;i++){
+    hEl = panels[i].querySelector('.brn-c2-h > span');
+    if(!hEl) continue;
+    txt = (""+(hEl.textContent||"")).replace(/^\s+|\s+$/g,"");
+    if(txt.indexOf('Recent learnings')>=0) return panels[i];
+  }
+  return null;
+}
+
+function ensureLearnMerge(root, facts){
+  var panel = findLearnPanel(root);
+  if(!panel) return;
+
+  var wrap = panel.querySelector('.brf-real-wrap');
+  if(!wrap){
+    wrap = document.createElement('div');
+    wrap.className = 'brf-real-wrap';
+    var hDiv = panel.querySelector('.brn-c2-h');
+    if(hDiv && hDiv.nextSibling){ panel.insertBefore(wrap, hDiv.nextSibling); }
+    else if(hDiv){ hDiv.parentNode.insertBefore(wrap, hDiv.nextSibling); }
+    else { panel.insertBefore(wrap, panel.firstChild); }
+  }
+
+  var html = '', i, shown;
+  if(!facts.length){
+    html = '<div class="brf-inline-empty">No real facts yet -- accept a Brain proposal after a run to see it here.</div>';
+  } else {
+    shown = facts.length>MAXSHOWN ? MAXSHOWN : facts.length;
+    for(i=0;i<shown;i++){ html += realRowHtml(facts[i]); }
+    if(facts.length>MAXSHOWN){
+      html += '<div class="brf-more-note">+'+(facts.length-MAXSHOWN)+' earlier real fact(s) not shown</div>';
+    }
+  }
+  wrap.innerHTML = html;
+  HY(wrap);
+  wireRealRowEvents(wrap);
+
+  /* tag pre-existing demo rows (host-rendered LEARN array), once each */
+  var rows = panel.querySelectorAll('.brn-learn'), r, tEl;
+  for(i=0;i<rows.length;i++){
+    r = rows[i];
+    if(r.getAttribute('data-brf-real')) continue; /* one of ours */
+    if(r.getAttribute('data-brf-tagged')) continue;
+    r.setAttribute('data-brf-tagged','1');
+    tEl = r.querySelector('.brn-learn-t');
+    if(tEl){ tEl.insertAdjacentHTML('afterbegin', '<span class="brf-tag-demo brf-tag-inline">DEMO</span>'); }
+  }
+}
+
+function ensureGraphRail(root, facts){
+  var box = root.querySelector('.brn-canvasbox');
+  if(!box) return;
+  var rail = box.querySelector('.brf-rail');
+  if(!facts.length){
+    if(rail && rail.parentNode){ rail.parentNode.removeChild(rail); }
+    return;
+  }
+  if(!rail){
+    rail = document.createElement('div');
+    rail.className = 'brf-rail';
+    box.appendChild(rail);
+  }
+  rail.title = facts.length+' real fact(s) in your Brain -- click a dot to ground your next prompt on it';
+  var max = RAILMAX, shown = facts.length>max?max:facts.length, i, html='';
+  html += '<span class="brf-rail-h">'+S('brain')+'</span>';
+  for(i=0;i<shown;i++){
+    html += '<button type="button" class="brf-rail-dot" data-brf-raildot="'+esc(""+facts[i].id)+'" title="'+esc(clampTxt(facts[i].text,140))+'"></button>';
+  }
+  if(facts.length>max){ html += '<div class="brf-rail-more">+'+(facts.length-max)+'</div>'; }
+  rail.innerHTML = html;
+  wireRailEvents(rail);
+}
+
+function wireRailEvents(rail){
+  if(rail.getAttribute('data-brf-wired')) return;
+  rail.setAttribute('data-brf-wired','1');
+  rail.addEventListener('click', function(e){
+    var d = e.target.closest ? e.target.closest('[data-brf-raildot]') : null;
+    if(!d) return;
+    var id = d.getAttribute('data-brf-raildot');
+    var f = findFact(id);
+    if(!f) return;
+    if(typeof window.sideBrainChipAdd==="function"){ window.sideBrainChipAdd(f.text); }
+    else { T(f.text); }
+  });
+}
+
+/* -------------------------------------------------------- augment */
+
+function augment(root){
+  if(!root) return;
+  var facts = sortedFacts();
+  try{ ensureBanner(root, facts); }catch(e1){}
+  try{ ensureLearnMerge(root, facts); }catch(e2){}
+  try{ ensureGraphRail(root, facts); }catch(e3){}
+}
+
+function rememberRoot(root){
+  var i;
+  for(i=0;i<liveRoots.length;i++){ if(liveRoots[i]===root) return; }
+  liveRoots.push(root);
+}
+
+function refreshAllRoots(){
+  var kept = [], i, r;
+  for(i=0;i<liveRoots.length;i++){
+    r = liveRoots[i];
+    if(r && r.parentNode && document.body && document.body.contains(r)){
+      kept.push(r);
+      augment(r);
+    }
+  }
+  liveRoots = kept;
+}
+
+/* -------------------------------------------------------- wrap */
+
+function resolveRoot(target){
+  try{
+    return (typeof target==="string") ? document.querySelector(target) : target;
+  }catch(e){ return null; }
+}
+
+var ORIG_BUILD = window.buildBrainView;
+if(typeof ORIG_BUILD==="function"){
+  window.buildBrainView = function(target){
+    var ret = ORIG_BUILD.apply(this, arguments);
+    try{
+      var root = resolveRoot(target);
+      if(root){
+        rememberRoot(root);
+        augment(root);
+      }
+    }catch(eW){}
+    return ret;
+  };
+}
+
+/* SideBrainWrite already parsed by the time this module runs (spliced
+   after w3d-brainwrite / after SCRIPT-MARK). Subscribe so an accept
+   reflects live, even if the Brain view is already open. */
+try{
+  if(window.SideBrainWrite && typeof window.SideBrainWrite.onChange==="function"){
+    window.SideBrainWrite.onChange(function(evt){ refreshAllRoots(); });
+  }
+}catch(eSub){}
+
+/* cross-tab safety net */
+try{
+  window.addEventListener('storage', function(e){
+    if(e && e.key===FACTS_KEY){ refreshAllRoots(); }
+  });
+}catch(eSt){}
+
+/* in case a brain root already rendered before this module parsed */
+try{
+  var pre = document.querySelectorAll('[data-brn]'), pi;
+  for(pi=0; pi<pre.length; pi++){ rememberRoot(pre[pi]); augment(pre[pi]); }
+}catch(ePre){}
+
+})();
+</script>
+<script data-mod="w4a-acp">
+(function(){
+if(window.__sideAcp)return;window.__sideAcp=1;
+"use strict";
+
+/* =========================================================================
+   W4-A  --  window.SideACP   (prefix .acp-)
+   Browser-side driver for the daemon's ACP tier (/api/acp/*).
+
+   The daemon speaks the Agent Client Protocol. This module is the only thing
+   in the app that talks to it. Every poll update is routed to a surface that
+   ALREADY EXISTS -- no parallel UI is invented here:
+
+     plan               -> SideArtifacts "plan" artifact, updated IN PLACE
+     tool_call / fs     -> node state + a "walkthrough" artifact section
+     message_chunk      -> the node's live transcript (.ndz-msgs)
+     terminal           -> the Node Designer terminal component
+     permission_request -> SideGate2.push(), answer POSTs /api/acp/permission
+     usage              -> SideBudget.record, ONLY when real token counts exist
+
+   NOTHING IN THIS FILE EVER ANSWERS A PERMISSION REQUEST. Not on a timeout,
+   not on a reload, not when a session ends, not when the daemon dies. If no
+   human answers, the request stays unanswered and the agent stays blocked.
+   The daemon resolves an unanswered request as `cancelled`, which is not
+   consent and is never displayed as one.
+
+   Degrades silently with no daemon (file:// is the demo path).
+   ES5 only. ASCII only. Zero dependencies.
+   ========================================================================= */
+
+var VERSION="1.0.0";
+
+/* ---------------------------------------------------------------- tiny */
+function isFn(f){ return typeof f==="function"; }
+function isArr(v){
+  if(isFn(Array.isArray)) return Array.isArray(v);
+  return Object.prototype.toString.call(v)==="[object Array]";
+}
+function str(s){ return (s==null)?"":(""+s); }
+function trim(s){ return str(s).replace(/^\s+|\s+$/g,""); }
+function esc(s){
+  return str(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+               .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+/* strip markup + collapse whitespace; agent text is untrusted */
+function plain(s){ return trim(str(s).replace(/<[^>]*>/g," ").replace(/\s+/g," ")); }
+/* streamed prose: strip markup but KEEP spacing. plain() trims, and a chunk
+   boundary lands mid-word often enough that trimming visibly welds words
+   together ("Looking at" + "the plan" -> "Looking atthe plan"). */
+function speech(s){ return str(s).replace(/<[^>]*>/g," ").replace(/\r/g,""); }
+function clamp(s,n){ s=str(s); return s.length>n ? (s.slice(0,n-1)+"\u2026") : s; }
+function now(){ return (new Date()).getTime(); }
+function T(m){ try{ if(isFn(window.toast)) window.toast(m); }catch(e){} }
+function mk(tag,cls){ var e=document.createElement(tag); if(cls)e.className=cls; return e; }
+function q(sel,root){ try{ return (root||document).querySelector(sel); }catch(e){ return null; } }
+
+function SA(){ var s=window.SideArtifacts; return (s&&isFn(s.add)&&isFn(s.get))?s:null; }
+function G2(){ var g=window.SideGate2; return (g&&isFn(g.push))?g:null; }
+function BUD(){ var b=window.SideBudget; return (b&&isFn(b.record))?b:null; }
+
+/* ------------------------------------------------------------ transport */
+/* Never rejects. Always resolves {ok,status,data,error}. A missing fetch
+   (file://, old webview) reads exactly like an unreachable daemon, so the
+   demo path produces no console noise and no dead spinners. */
+var REQ_TIMEOUT=12000;
+
+function offline(){
+  if(!window.fetch) return true;
+  try{ if(window.location && window.location.protocol==="file:") return true; }catch(e){}
+  return false;
+}
+
+function raw(method,url,bodyObj,token){
+  return new Promise(function(resolve){
+    if(offline()){ resolve({ok:false,status:0,data:null,error:"no daemon"}); return; }
+    var settled=false;
+    function fin(r){ if(settled)return; settled=true; resolve(r); }
+    var t=setTimeout(function(){ fin({ok:false,status:0,data:null,error:"timeout"}); },REQ_TIMEOUT);
+    var opts={method:method,cache:"no-store"};
+    if(bodyObj){
+      /* content-type application/json is half the daemon's CSRF gate; the
+         bearer from /api/health is the other half (Origin covers us too). */
+      opts.headers={"content-type":"application/json"};
+      if(token) opts.headers["x-side-token"]=token;
+      opts.body=JSON.stringify(bodyObj);
+    }
+    try{
+      window.fetch(url,opts).then(function(r){
+        var st=r?r.status:0, ok=!!(r&&r.ok);
+        if(!r||!isFn(r.json)) return {status:st,ok:ok,data:null};
+        return r.json()["catch"](function(){return null;}).then(function(j){
+          return {status:st,ok:ok,data:j};
+        });
+      }).then(function(res){
+        clearTimeout(t);
+        var em=null;
+        if(!res.ok) em=(res.data&&(res.data.error||res.data.message))||("http "+res.status);
+        fin({ok:res.ok,status:res.status,data:res.data,error:em});
+      })["catch"](function(e){
+        clearTimeout(t);
+        fin({ok:false,status:0,data:null,error:(e&&e.message)||"network error"});
+      });
+    }catch(eSync){
+      clearTimeout(t);
+      fin({ok:false,status:0,data:null,error:(eSync&&eSync.message)||"request failed"});
+    }
+  });
+}
+
+/* /api/health carries the per-launch bearer AND the workspace root we use as
+   the default session cwd (the daemon refuses any cwd outside it). */
+var HEALTH=null, HEALTH_AT=0, HEALTH_IN=null;
+var HEALTH_TTL=20000;
+
+function health(force){
+  if(!force && HEALTH && (now()-HEALTH_AT)<HEALTH_TTL) return Promise.resolve(HEALTH);
+  if(HEALTH_IN) return HEALTH_IN;
+  HEALTH_IN=raw("GET","/api/health",null,null).then(function(r){
+    HEALTH_IN=null; HEALTH_AT=now();
+    HEALTH=(r.ok&&r.data&&r.data.ok)?r.data:null;
+    return HEALTH;
+  });
+  return HEALTH_IN;
+}
+function token(){ return (HEALTH&&HEALTH.token)?HEALTH.token:null; }
+
+function get(url){ return raw("GET",url,null,null); }
+
+/* One transparent retry on 403: the launch token rotates per daemon restart,
+   so a stale bearer is a refresh, not an error the user should ever see. */
+function post(url,body){
+  return health(false).then(function(){
+    return raw("POST",url,body,token());
+  }).then(function(r){
+    if(r.status!==403) return r;
+    return health(true).then(function(){ return raw("POST",url,body,token()); });
+  });
+}
+
+/* ------------------------------------------------------------- registry */
+var SESSIONS={};      /* sessionId -> S */
+var ORDER=[];
+var LISTENERS=[];
+var TRANSCRIPT={};    /* nodeId -> [{who,text}]  (memory only, see below) */
+var TERM={};          /* nodeId -> [line]        (memory only) */
+var TOUCH_NODE="__side_acp_touch__";
+
+/* Deliberately NOT persisted. A restored transcript would imply a session we
+   cannot resume -- the daemon has no session/load, and a reload leaves any
+   open permission request unanswered on purpose. Wave 2 refused to persist
+   the gate queue for the same reason. Artifacts DO persist: SideArtifacts
+   owns that, and an artifact is a record of what happened, not a live claim. */
+
+function fire(u,S){
+  var i,summ=S?summary(S):null;
+  for(i=0;i<LISTENERS.length;i++){ try{ LISTENERS[i](u,summ); }catch(e){} }
+}
+function onUpdate(fn){
+  if(!isFn(fn)) return function(){};
+  LISTENERS.push(fn);
+  return function(){
+    var i; for(i=0;i<LISTENERS.length;i++){ if(LISTENERS[i]===fn){ LISTENERS.splice(i,1); return; } }
+  };
+}
+
+function summary(S){
+  return {
+    sessionId:S.sessionId, nodeId:S.nodeId, agent:S.agent, agentName:S.agentName,
+    state:S.state, runId:S.runId, spaceId:S.spaceId, cwd:S.cwd,
+    currentMode:S.currentMode, modes:S.modes, sandboxed:S.sandboxed,
+    stopReason:S.stopReason, closedReason:S.closedReason,
+    usage:S.usage, pendingPermissions:openPerms(S).length
+  };
+}
+function sessions(){
+  var out=[],i,S;
+  for(i=0;i<ORDER.length;i++){ S=SESSIONS[ORDER[i]]; if(S) out.push(summary(S)); }
+  return out;
+}
+function forNode(nodeId){
+  var i,S;
+  for(i=ORDER.length-1;i>=0;i--){
+    S=SESSIONS[ORDER[i]];
+    if(S && S.nodeId===nodeId && S.state!=="closed") return S;
+  }
+  return null;
+}
+
+/* --------------------------------------------------------- node designer */
+/* The v2 designer mounts artifacts by itself off SideArtifacts.onChange, so
+   plan / walkthrough need no DOM work here. The transcript and the terminal
+   component are host-owned DOM, so we stamp the open designer with the node
+   id it is showing (via the v2 hook registry -- never a monkey-patch) and
+   write into the legacy .ndz-msgs / .nd2-term hooks. */
+function ndOpenFor(nodeId){
+  var h=document.getElementById("ndesign");
+  if(!h) return null;
+  if((""+(h.className||"")).indexOf("on")<0) return null;
+  if(h.getAttribute("data-acp-node")!==nodeId) return null;
+  return h;
+}
+function bubbleHTML(m){
+  if(m.who==="sys") return '<div class="ndz-b sys acp-sys">'+m.text+'</div>';
+  if(m.who==="you") return '<div class="ndz-b you"><div class="ndz-bub">'+m.text+'</div></div>';
+  return '<div class="ndz-b agent"><span class="ndz-bic acp-bic">'+GLYPH.agent+'</span>'
+        +'<div class="ndz-bub acp-bub'+(m.thought?" acp-thought":"")+'">'+m.text+'</div></div>';
+}
+function paint(nodeId,m){
+  var h=ndOpenFor(nodeId); if(!h) return null;
+  var msgs=q(".ndz-msgs",h), scroll=q(".ndz-scroll",h);
+  if(!msgs) return null;
+  var d=mk("div"); d.innerHTML=bubbleHTML(m);
+  var b=d.firstChild; if(!b) return null;
+  msgs.appendChild(b);
+  try{ if(scroll) scroll.scrollTop=scroll.scrollHeight; }catch(e){}
+  return b;
+}
+function repaintAll(nodeId,host){
+  var buf=TRANSCRIPT[nodeId]; if(!buf||!buf.length) return;
+  var msgs=q(".ndz-msgs",host), scroll=q(".ndz-scroll",host);
+  if(!msgs) return;
+  var i,d,b;
+  for(i=0;i<buf.length;i++){
+    d=mk("div"); d.innerHTML=bubbleHTML(buf[i]);
+    b=d.firstChild; if(!b) continue;
+    msgs.appendChild(b);
+    buf[i].el=b;
+  }
+  try{ if(scroll) scroll.scrollTop=scroll.scrollHeight; }catch(e){}
+}
+
+var TX_CAP=140, BUBBLE_CAP=24000;
+function tx(nodeId,who,text,thought){
+  var buf=TRANSCRIPT[nodeId]||(TRANSCRIPT[nodeId]=[]);
+  var body=speech(text);
+  var m={who:who,text:esc(body),raw:body,thought:!!thought,el:null};
+  buf.push(m);
+  if(buf.length>TX_CAP) buf.splice(0,buf.length-TX_CAP);
+  m.el=paint(nodeId,m);
+  return m;
+}
+/* streaming chunks are appended into the SAME bubble until the speaker or the
+   kind of thing being said changes -- one bubble per chunk is unreadable */
+function txAppend(m,text,nodeId){
+  if(m.raw.length>=BUBBLE_CAP) return;
+  m.raw=m.raw+speech(text);
+  m.text=esc(m.raw);
+  if(m.el){
+    var bub=q(".ndz-bub",m.el)||m.el;
+    bub.innerHTML=m.text;
+    var h=ndOpenFor(nodeId), scroll=h?q(".ndz-scroll",h):null;
+    try{ if(scroll) scroll.scrollTop=scroll.scrollHeight; }catch(e){}
+  }
+}
+
+/* ------------------------------------------------------------- terminal */
+var TERM_CAP=400;
+function termPush(nodeId,line){
+  var buf=TERM[nodeId]||(TERM[nodeId]=[]);
+  buf.push(plain(line));
+  if(buf.length>TERM_CAP) buf.splice(0,buf.length-TERM_CAP);
+  var h=ndOpenFor(nodeId); if(!h) return;
+  var box=q('.nd2-c[data-t="terminal"] .nd2-term',h); if(!box) return;
+  var row=mk("div","nd2-tl acp-tl");
+  row.innerHTML='<span class="nd2-tp">$</span><span>'+esc(plain(line))+'</span>';
+  box.appendChild(row);
+  try{ box.scrollTop=box.scrollHeight; }catch(e){}
+}
+function termFlush(nodeId,host){
+  var buf=TERM[nodeId]; if(!buf||!buf.length) return;
+  var box=q('.nd2-c[data-t="terminal"] .nd2-term',host); if(!box) return;
+  var i,row;
+  for(i=0;i<buf.length;i++){
+    row=mk("div","nd2-tl acp-tl");
+    row.innerHTML='<span class="nd2-tp">$</span><span>'+esc(buf[i])+'</span>';
+    box.appendChild(row);
+  }
+  try{ box.scrollTop=box.scrollHeight; }catch(e){}
+}
+
+/* v2 hook registry. RULE 15: seed the array rather than calling
+   window.sideNd2AddHook, so load order cannot silently drop us. */
+window.__sideNd2Hooks=window.__sideNd2Hooks||[];
+(function(){
+  var L=window.__sideNd2Hooks,i;
+  for(i=0;i<L.length;i++){ if(L[i] && L[i].__nd2Key==="acp") return; }
+  function hook(host,api){
+    var id=(api&&(api.id||(api.node&&api.node.id)))||"";
+    try{ host.setAttribute("data-acp-node",id); }catch(e){}
+    if(!id) return;
+    repaintAll(id,host);
+    termFlush(id,host);
+    mountLauncher(host,api,id);
+  }
+  hook.__nd2Key="acp";
+  L.push(hook);
+})();
+
+/* The picker needs somewhere to live or nothing in the app can ever reach it.
+   It mounts itself into the designer's own toolbar from the hook above, so no
+   host call site has to be spliced for W4-A to be usable. The panel is our own
+   DOM inside the designer shell; the host wipes that shell on close, and
+   paintPickers() drops any picker whose host has left the document. */
+function mountLauncher(host,api,nodeId){
+  var bar=q(".nd2-bar",host);
+  if(!bar || q(".acp-launch",bar)) return;
+  var btn=mk("button","nd2-tool acp-launch");
+  btn.type="button";
+  btn.innerHTML=GLYPH.agent+"<span>Agent</span>";
+  var panel=null, picker=null;
+  function close(){
+    if(picker){ try{ picker.destroy(); }catch(e){} picker=null; }
+    if(panel && panel.parentNode) panel.parentNode.removeChild(panel);
+    panel=null;
+    btn.className="nd2-tool acp-launch";
+  }
+  function open(){
+    panel=mk("div","acp-panel");
+    var head=mk("div","acp-panel-head");
+    head.innerHTML='<span>Agent</span>';
+    var x=mk("button","acp-panel-x"); x.type="button"; x.innerHTML="&#215;";
+    x.addEventListener("click",close,false);
+    head.appendChild(x);
+    panel.appendChild(head);
+    var body=mk("div","acp-panel-body");
+    panel.appendChild(body);
+    host.appendChild(panel);
+    btn.className="nd2-tool acp-launch on";
+    picker=renderPicker(body,{nodeId:nodeId,
+      runId:(api&&api.lastrun&&api.lastrun.runId)||null});
+  }
+  btn.addEventListener("click",function(){ if(panel) close(); else open(); },false);
+  var tidy=q(".nd2-tidy",bar);
+  if(tidy && tidy.nextSibling) bar.insertBefore(btn,tidy.nextSibling);
+  else bar.appendChild(btn);
+}
+
+/* ------------------------------------------------------------ node state */
+var WF_STATE={running:"running",review:"review",done:"done",blocked:"blocked",queued:"queued"};
+var DATA_STATE={running:"run",review:"review",done:"done",blocked:"review",queued:"queued"};
+
+function setNodeState(S,st){
+  if(!S.nodeId) return;
+  if(S.lastNodeState===st) return;
+  S.lastNodeState=st;
+  try{ if(isFn(window.wfSetNodeState)) window.wfSetNodeState(S.nodeId,WF_STATE[st]||st); }catch(e){}
+  var want=DATA_STATE[st];
+  if(!want) return;
+  var br=window.SideFxBridge;
+  if(!br||!isFn(br.mutate)) return;
+  try{
+    br.mutate(function(g){
+      var ns=(g&&g.nodes)||[],i;
+      for(i=0;i<ns.length;i++){ if(ns[i] && ns[i].id===S.nodeId && ns[i].status!==want){ ns[i].status=want; return true; } }
+      return false;
+    });
+  }catch(e2){}
+}
+
+/* --------------------------------------------------------- artifact I/O */
+/* SideArtifacts' frozen export has add/get but no update: `get` hands back
+   the LIVE stored object, so an in-place edit of art.data is the update.
+   What it does not do is persist + notify. clear() on a node id no artifact
+   can ever own is a genuine no-op on the data and does exactly those two
+   things through the public API, which is what repaints the mounted cards.
+   If the host ever exports a real touch/update we prefer it. */
+var touchT=null;
+function touchArtifacts(){
+  if(touchT) return;
+  touchT=setTimeout(function(){
+    touchT=null;
+    var sa=SA(); if(!sa) return;
+    try{
+      if(isFn(sa.touch)) sa.touch();
+      else if(isFn(sa.clear)) sa.clear(TOUCH_NODE);
+    }catch(e){}
+  },300);
+}
+
+var PLAN_STATUS={pending:"todo",in_progress:"doing",completed:"done",cancelled:"skip",skipped:"skip",failed:"skip"};
+
+function onPlan(S,u){
+  var sa=SA(); if(!sa||!S.nodeId) return;
+  var ents=isArr(u.entries)?u.entries:[];
+  var steps=[],i,e;
+  for(i=0;i<ents.length;i++){
+    e=ents[i]||{};
+    steps.push({id:"s"+(i+1), text:clamp(plain(e.content),400), status:PLAN_STATUS[str(e.status)]||"todo"});
+  }
+  if(!steps.length) return;
+  var art=S.planArtId?sa.get(S.planArtId):null;
+  if(!art){
+    art=sa.add(S.nodeId,S.runId,"plan","The agent's plan",{steps:steps});
+    if(art) S.planArtId=art.id;
+    return;                       /* add() already persisted and notified */
+  }
+  art.data.steps=steps;           /* IN PLACE -- never a second plan card */
+  touchArtifacts();
+}
+
+function walkArt(S){
+  var sa=SA(); if(!sa||!S.nodeId) return null;
+  var art=S.walkArtId?sa.get(S.walkArtId):null;
+  if(art) return art;
+  art=sa.add(S.nodeId,S.runId,"walkthrough","What the agent did",{sections:[]});
+  if(art) S.walkArtId=art.id;
+  return art;
+}
+function walkSet(S,key,heading,body){
+  var art=walkArt(S); if(!art) return;
+  if(!isArr(art.data.sections)) art.data.sections=[];
+  var idx=S.walkIndex[key];
+  if(idx==null||!art.data.sections[idx]){
+    idx=art.data.sections.length;
+    S.walkIndex[key]=idx;
+    art.data.sections.push({heading:clamp(heading,140),body:clamp(body,600)});
+    touchArtifacts();
+    return;
+  }
+  art.data.sections[idx].heading=clamp(heading,140);
+  art.data.sections[idx].body=clamp(body,600);
+  touchArtifacts();
+}
+
+/* tool calls become readable prose, not a tool log */
+var KIND_VERB={
+  read:"Read a file", edit:"Edited a file", "delete":"Deleted a file",
+  move:"Moved a file", search:"Searched the project", execute:"Ran a command",
+  think:"Thought it through", fetch:"Fetched something", switch_mode:"Switched mode",
+  other:"Did something"
+};
+var TC_STATE={
+  pending:"Queued up.", in_progress:"Working on it right now.",
+  completed:"Finished.", failed:"This failed."
+};
+function locText(u){
+  var L=isArr(u.locations)?u.locations:[],out=[],i,p;
+  for(i=0;i<L.length&&out.length<4;i++){
+    p=L[i]&&(L[i].path||L[i]);
+    if(typeof p==="string"&&p) out.push(p.replace(/^.*\//,""));
+  }
+  return out.length?(" ("+out.join(", ")+")"):"";
+}
+function onToolCall(S,u){
+  var id=str(u.id)||("t"+(++S.toolSeq));
+  var prev=S.tools[id]||{};
+  var t=S.tools[id]||(S.tools[id]={});
+  /* tool_call_update carries ONLY the changed fields -> merge, never replace */
+  t.title = (u.title!=null&&u.title!=="") ? plain(u.title) : (prev.title||"");
+  if(u.kind!=null&&u.kind!=="") t.kind=str(u.kind);
+  if(u.status!=null&&u.status!=="") t.status=str(u.status);
+  if(u.locations) t.locations=u.locations;
+  var heading=t.title||KIND_VERB[t.kind]||"The agent did something";
+  var body=(KIND_VERB[t.kind]||"Step")+locText(t)+". "+(TC_STATE[t.status]||"Status unknown.");
+  walkSet(S,"tool:"+id,heading,body);
+  if(t.status==="failed") tx(S.nodeId,"sys","A step failed: "+heading);
+  if(S.state!=="closed") setNodeState(S,openPerms(S).length?"review":"running");
+}
+function onFs(S,u){
+  var op=str(u.op)==="write"?"Wrote":"Read";
+  var p=str(u.path), leaf=p.replace(/^.*\//,"");
+  walkSet(S,"fs:"+u.op+":"+p, op+" "+leaf, op+" the file "+p+".");
+}
+
+/* ---------------------------------------------------------- permissions */
+function openPerms(S){
+  var out=[],k;
+  for(k in S.perms){ if(S.perms.hasOwnProperty(k)&&!S.perms[k].done) out.push(S.perms[k]); }
+  return out;
+}
+function kindsOf(opts){
+  var can={allow:false,deny:false},i,k;
+  for(i=0;i<(opts||[]).length;i++){
+    k=str(opts[i]&&opts[i].kind);
+    if(k.indexOf("allow")===0) can.allow=true;
+    if(k.indexOf("reject")===0) can.deny=true;
+  }
+  return can;
+}
+function optNames(opts){
+  var out=[],i;
+  for(i=0;i<(opts||[]).length;i++){ if(opts[i]) out.push(plain(opts[i].name||opts[i].optionId)); }
+  return out;
+}
+
+function permSummary(S,u,can){
+  var lines=[];
+  var tc=u.toolCall||{};
+  var what=plain(tc.title||u.title||"");
+  lines.push("The agent "+(S.agentName||S.agent)+" has stopped and is waiting for you. It cannot continue until a person answers.");
+  if(what) lines.push("It wants to: "+clamp(what,240));
+  if(tc.kind) lines.push("Kind of action: "+(KIND_VERB[str(tc.kind)]||str(tc.kind))+".");
+  var names=optNames(u.options);
+  if(names.length) lines.push("The agent offered these answers: "+names.join(", ")+".");
+  if(can.allow&&can.deny){
+    lines.push("Approving lets it do this one thing. Refusing tells it no; the agent keeps running and decides what to do next.");
+  } else if(!can.allow&&can.deny){
+    lines.push("This agent offered NO way to approve, only ways to refuse. Side will not invent an approval it was never given: if you approve, the request is answered 'cancelled' instead and nothing is allowed.");
+  } else if(can.allow&&!can.deny){
+    lines.push("This agent offered NO way to refuse, only ways to approve. If you deny, the request is answered 'cancelled' instead and nothing is allowed.");
+  } else {
+    lines.push("This agent offered no usable answers at all. Whatever you press, the request is answered 'cancelled' and nothing is allowed.");
+  }
+  lines.push("If nobody answers, nothing happens: the request stays open until the daemon cancels it. Waiting is never a yes.");
+  return lines.join(" ");
+}
+
+/* A permission request is not a verified result and must never borrow one.
+   Passing an explicit "none" verdict stops SideGate2 falling back to a stale
+   SideVerify verdict for this node, and keeps "Deny & stop" the primary. */
+function permVerdict(S,u,can){
+  var reasons=[
+    "This is a live permission request from an agent, not a checked result. Nothing has been verified.",
+    "Side did not decide anything for you and will not answer this on a timeout, a reload, or a session ending."
+  ];
+  if(!can.allow) reasons.push("The agent offered no 'allow' option, so this cannot actually be approved.");
+  return {verdict:"none",score:null,reasons:reasons,at:now(),model:null};
+}
+
+function onPermission(S,u){
+  var reqId=str(u.requestId);
+  if(!reqId||S.perms[reqId]) return;
+  var can=kindsOf(u.options);
+  var tc=u.toolCall||{};
+  var rec={id:reqId,title:plain(tc.title||u.title||"permission request"),options:u.options||[],
+           can:can,sent:false,done:false,dead:false,payload:null};
+  S.perms[reqId]=rec;
+  setNodeState(S,"review");
+  /* Seed the tool record from the request. Agents routinely ask permission for
+     a tool call they never announced, and a later tool_call_update carries only
+     the changed fields -- without this the walkthrough section for it reads
+     "The agent did something" forever. */
+  if(tc.toolCallId){
+    onToolCall(S,{id:tc.toolCallId,title:tc.title,kind:tc.kind,
+                  status:"pending",locations:tc.locations});
+  }
+
+  var g=G2();
+  if(!g){
+    /* No gate loaded = nowhere to ask a human = we do NOT answer. Say so. */
+    tx(S.nodeId,"sys","The agent is asking for permission but the approval gate is not loaded, so there is nowhere to ask you. Nothing was answered and the agent is still waiting.");
+    T("An agent needs permission and there is nowhere to ask you");
+    return;
+  }
+  var payload={
+    id:"acp_"+S.sessionId+"_"+reqId,
+    nodeId:S.nodeId,
+    runId:S.runId,
+    title:clamp(rec.title,120),
+    summary:permSummary(S,u,can),
+    verdict:permVerdict(S,u,can),
+    onApprove:function(){ answer(S,rec,"allow"); },
+    onDeny:function(){ answer(S,rec,"deny"); }
+  };
+  rec.payload=g.push(payload);
+  tx(S.nodeId,"sys","Waiting on you: "+rec.title);
+  T("An agent is waiting on your approval");
+  if(S.modal && isFn(g.open)){ try{ g.open(rec.payload); }catch(e){} }
+}
+
+function answer(S,rec,outcome){
+  if(rec.dead){
+    T("That request expired before anyone answered it. Nothing was sent to the agent.");
+    tx(S.nodeId,"sys","You answered a permission request that had already been cancelled. Nothing was sent to the agent.");
+    return;
+  }
+  rec.sent=true;
+  var word=(outcome==="allow")?"allowed":"refused";
+  post("/api/acp/permission",{sessionId:S.sessionId,requestId:rec.id,outcome:outcome})
+    .then(function(r){
+      if(r.ok){
+        tx(S.nodeId,"sys","You "+word+" the agent: "+rec.title);
+      }else{
+        rec.sent=false;
+        tx(S.nodeId,"sys","Your answer did not reach the agent ("+str(r.error)+"). Nothing was "+word+".");
+        T("That answer did not reach the agent: "+str(r.error));
+      }
+      bump(S);
+    });
+}
+
+/* The daemon echoes permission_resolved for BOTH outcomes: ours, and the ones
+   it resolved as `cancelled` on a timeout / cancel / dead connection. If we
+   never sent an answer, no human ever answered -- say that plainly and refuse
+   to let the queued card be clicked into a fake decision. */
+function onPermResolved(S,u){
+  var rec=S.perms[str(u.requestId)];
+  if(!rec||rec.done) return;
+  rec.done=true;
+  if(!rec.sent){
+    rec.dead=true;
+    var why=plain(u.reason||u.outcome||"cancelled");
+    tx(S.nodeId,"sys","The permission request \""+rec.title+"\" was cancelled by the daemon ("+why+"). Nobody approved it and nothing was allowed.");
+    T("A permission request expired before it was answered");
+    var p=rec.payload, g=G2();
+    if(p){
+      p.title="Expired: "+p.title;
+      p.summary="This request can no longer be answered. The daemon cancelled it ("+why+") and told the agent the turn was cancelled -- which is not consent and is not an approval. Nothing was allowed. Dismiss this card; whatever you press, nothing is sent to the agent.";
+      p.verdict={verdict:"none",score:null,model:null,at:now(),
+                 reasons:["Cancelled without a human answer. Timing out is not consent."]};
+      /* push() on an already-queued payload is a dedup no-op that repaints
+         every mount -- the public way to refresh a card in place. */
+      try{ if(g&&!document.hidden) g.push(p); }catch(e){}
+    }
+  }
+  if(!openPerms(S).length && S.state!=="closed"){
+    setNodeState(S, S.state==="running"?"running":"done");
+  }
+}
+
+/* ---------------------------------------------------------------- budget */
+/* Only real, explicit input/output token counts are recorded. The daemon's
+   normalised `usage` update carries context-window used/size and an optional
+   cost -- used/size is NOT a token spend and must never be passed off as one.
+   Where the numbers do not exist, we record nothing rather than estimate. */
+function tokensFrom(u){
+  var cand=[u,u.tokens,u.usage,u.raw];
+  var i,o,inTok,outTok;
+  for(i=0;i<cand.length;i++){
+    o=cand[i];
+    if(!o||typeof o!=="object") continue;
+    inTok = (typeof o.inputTokens==="number")?o.inputTokens
+          : (typeof o.input_tokens==="number")?o.input_tokens
+          : (typeof o.promptTokens==="number")?o.promptTokens : null;
+    outTok= (typeof o.outputTokens==="number")?o.outputTokens
+          : (typeof o.output_tokens==="number")?o.output_tokens
+          : (typeof o.completionTokens==="number")?o.completionTokens : null;
+    if(inTok!=null||outTok!=null) return {"in":inTok||0,out:outTok||0};
+  }
+  return null;
+}
+function onUsage(S,u){
+  S.usage={used:(typeof u.used==="number")?u.used:null,
+           size:(typeof u.size==="number")?u.size:null,
+           cost:(typeof u.cost==="number")?u.cost:null,
+           recorded:false};
+  var b=BUD(); if(!b) return;
+  var tk=tokensFrom(u);
+  if(tk){
+    try{ b.record(S.runId,S.nodeId,S.agent,tk["in"],tk.out); S.usage.recorded=true; }catch(e){}
+  }
+  /* A cost the agent reports is real spend, not an estimate. We cannot turn
+     it into tokens, so we do not touch the ledger with it -- but we will stop
+     a session that has already crossed the user's cap. */
+  if(S.usage.cost!=null && isFn(b.cap)){
+    var capv=0;
+    try{ capv=b.cap(); }catch(e2){ capv=0; }
+    if(capv>0 && S.usage.cost>capv && !S.cappedAt){
+      S.cappedAt=now();
+      try{ if(isFn(b.stop)) b.stop(S.runId,S.nodeId,S.agentName||S.agent,"the agent reported spending more than the $"+capv.toFixed(2)+" cap"); }catch(e3){}
+      tx(S.nodeId,"sys","Stopped: the agent reported spending $"+S.usage.cost.toFixed(2)+", over your $"+capv.toFixed(2)+" cap.");
+      T("Budget cap reached \u00B7 the agent was stopped");
+      stop(S.sessionId);
+    }
+  }
+}
+
+/* ------------------------------------------------------------- messages */
+function closeLive(S){ S.live=null; }
+function onChunk(S,u){
+  var role=str(u.role)||"agent";
+  var who=(role==="user")?"you":(role==="thought")?"agent":"agent";
+  var thought=(role==="thought");
+  var text=str(u.text);
+  if(!text && u.contentType){
+    text="["+plain(u.contentType)+" content \u2014 Side does not render this yet]";
+  }
+  if(!text) return;
+  var key=role;
+  if(S.live && S.live.key===key){
+    txAppend(S.live.m,text,S.nodeId);
+    return;
+  }
+  var m=tx(S.nodeId,who,(thought?"thinking: ":"")+text,thought);
+  S.live={key:key,m:m};
+}
+
+/* ------------------------------------------------------------- dispatch */
+function handle(S,u){
+  var t=str(u&&u.type);
+  try{
+    if(t==="message_chunk")            onChunk(S,u);
+    else if(t==="plan")              { closeLive(S); onPlan(S,u); }
+    else if(t==="tool_call")         { closeLive(S); onToolCall(S,u); }
+    else if(t==="fs")                  onFs(S,u);
+    else if(t==="terminal")            onTerminal(S,u);
+    else if(t==="permission_request"){ closeLive(S); onPermission(S,u); }
+    else if(t==="permission_resolved") onPermResolved(S,u);
+    else if(t==="mode")              { S.currentMode=str(u.mode); }
+    else if(t==="commands")          { S.commands=isArr(u.commands)?u.commands:[]; }
+    else if(t==="usage")               onUsage(S,u);
+    else if(t==="stop")                onStop(S,u);
+    else if(t==="cancelled")         { closeLive(S); tx(S.nodeId,"sys","The turn was cancelled."); }
+    else if(t==="error")             { closeLive(S); onError(S,u); }
+    else if(t==="closed")            { closeLive(S); shut(S,plain(u.reason)||"the agent connection closed"); }
+    /* type:"raw" and anything unknown is never dropped -- it reaches every
+       onUpdate listener below, it just has no invented surface of its own. */
+  }catch(e){}
+  fire(u,S);
+}
+function onTerminal(S,u){
+  if(u.command) termPush(S.nodeId,plain(u.command)+(u.sandboxed===false?"   (NOT sandboxed)":""));
+  var out=str(u.output);
+  if(out){
+    var lines=out.split(/\r?\n/),i;
+    for(i=0;i<lines.length;i++){ if(trim(lines[i])) termPush(S.nodeId,lines[i]); }
+  }
+  if(u.exitStatus && typeof u.exitStatus.exitCode==="number"){
+    termPush(S.nodeId,"exit "+u.exitStatus.exitCode);
+  }
+  walkSet(S,"term:"+str(u.terminalId),"Ran a command on your machine",
+          plain(u.command||"a command")+". Output is in the terminal panel on this node.");
+}
+function onStop(S,u){
+  closeLive(S);
+  S.stopReason=plain(u.stopReason)||"end_turn";
+  S.state=(S.state==="closed")?"closed":"idle";
+  tx(S.nodeId,"sys","The agent finished its turn ("+S.stopReason+").");
+  if(openPerms(S).length) setNodeState(S,"review");
+  else setNodeState(S,(S.stopReason==="error")?"blocked":"done");
+}
+function onError(S,u){
+  var msg=plain(u.message)||"the agent reported an error";
+  tx(S.nodeId,"sys","The agent errored: "+msg);
+  T("Agent error: "+clamp(msg,90));
+  setNodeState(S,"blocked");
+}
+
+/* ---------------------------------------------------------------- polling */
+/* Fast while a turn is running, backs off geometrically when idle, hard stop
+   the moment a session ends or stop() is called. There is exactly one timer
+   per session and it is always cleared before a new one is armed, so no loop
+   can outlive its session. */
+var POLL_FAST=450, POLL_TURN_MAX=1500, POLL_IDLE=2500, POLL_MAX=8000;
+var POLL_HIDDEN_MIN=4000, MAX_MISSES=6;
+
+function arm(S){
+  if(S.stopped||S.state==="closed") return;
+  if(S.timer){ clearTimeout(S.timer); S.timer=null; }
+  var d=S.interval;
+  try{ if(document.hidden && d<POLL_HIDDEN_MIN) d=POLL_HIDDEN_MIN; }catch(e){}
+  S.timer=setTimeout(function(){ S.timer=null; poll(S); },d);
+}
+function bump(S){ S.interval=POLL_FAST; arm(S); }
+function disarm(S){
+  S.stopped=true;
+  if(S.timer){ clearTimeout(S.timer); S.timer=null; }
+}
+
+function poll(S){
+  if(S.stopped) return;
+  get("/api/acp/poll?sessionId="+encodeURIComponent(S.sessionId)).then(function(r){
+    if(S.stopped) return;
+    if(r.status===404){ shut(S,"the daemon no longer knows this session"); return; }
+    if(!r.ok){
+      S.misses++;
+      if(S.misses>=MAX_MISSES){ shut(S,"lost contact with the daemon ("+str(r.error)+")"); return; }
+      S.interval=Math.min(POLL_MAX,Math.max(POLL_IDLE,S.interval*2));
+      arm(S);
+      return;
+    }
+    S.misses=0;
+    var d=r.data||{}, ups=isArr(d.updates)?d.updates:[], i;
+    if(d.state) S.state=str(d.state);
+    if(d.stopReason!=null) S.stopReason=plain(d.stopReason);
+    if(d.closedReason!=null && d.closedReason!=="") S.closedReason=plain(d.closedReason);
+    for(i=0;i<ups.length;i++){ handle(S,ups[i]); }
+    if(S.stopped) return;
+    if(S.state==="closed"){ shut(S,S.closedReason||"the agent connection closed"); return; }
+    if(ups.length){
+      S.interval=POLL_FAST;
+    }else if(S.state==="running"){
+      S.interval=Math.min(POLL_TURN_MAX,Math.round(S.interval*1.3)||POLL_FAST);
+    }else{
+      S.interval=Math.min(POLL_MAX,Math.max(POLL_IDLE,Math.round(S.interval*1.6)));
+    }
+    /* an open permission means a human is being waited on -- keep the loop
+       responsive enough to notice a cancellation, but no faster */
+    if(openPerms(S).length && S.interval>POLL_TURN_MAX) S.interval=POLL_TURN_MAX;
+    arm(S);
+  });
+}
+
+/* End of life. Marks every unanswered permission dead WITHOUT answering it:
+   the daemon has already told the agent `cancelled`, and cancelled is not
+   consent. We only stop the human from clicking a decision into the void. */
+function shut(S,why){
+  disarm(S);
+  if(S.state!=="closed"){
+    S.state="closed";
+    S.closedReason=why||S.closedReason||"session ended";
+  }
+  closeLive(S);
+  var open=openPerms(S),i;
+  for(i=0;i<open.length;i++){
+    onPermResolved(S,{requestId:open[i].id,outcome:"cancelled",reason:why||"the session ended"});
+  }
+  if(S.lastNodeState==="running") setNodeState(S,"blocked");
+  tx(S.nodeId,"sys","The agent session ended: "+(why||"closed")+".");
+  fire({type:"session_closed",sessionId:S.sessionId,reason:S.closedReason},S);
+  paintPickers();
+}
+
+/* --------------------------------------------------------------- API ops */
+function agents(){
+  return get("/api/acp/agents").then(function(r){
+    if(!r.ok){
+      var why=(r.status===0)?"no daemon":(r.status===503?"acp-off":"error");
+      return {ok:false,reason:why,error:r.error||"unavailable",agents:[]};
+    }
+    var list=isArr(r.data&&r.data.agents)?r.data.agents:[],out=[],i,a;
+    for(i=0;i<list.length;i++){
+      a=list[i]||{};
+      out.push({
+        id:str(a.id), name:plain(a.name)||str(a.id),
+        available:!!a.available,
+        reason:a.reason?plain(a.reason):null,
+        install:a.install?plain(a.install):null,
+        note:a.note?plain(a.note):null,
+        version:a.version?plain(a.version):null,
+        cmd:a.cmd?plain(a.cmd):null,
+        invocationConfirmed:(a.invocationConfirmed!==false)
+      });
+    }
+    return {ok:true,reason:null,error:null,agents:out,
+            sessions:(r.data&&r.data.sessions)||0,
+            maxSessions:(r.data&&r.data.maxSessions)||0,
+            capabilities:(r.data&&r.data.capabilities)||null};
+  });
+}
+/* The frozen contract types agents() as a Promise of the array. Callers that
+   want the honest failure reason read the array's own properties. */
+function agentsArray(){
+  return agents().then(function(res){
+    var arr=res.agents||[];
+    arr.ok=res.ok; arr.reason=res.reason; arr.error=res.error;
+    arr.maxSessions=res.maxSessions; arr.sessions=res.sessions;
+    return arr;
+  });
+}
+
+function newSession(nodeId,opts){
+  opts=opts||{};
+  var body={agent:str(opts.agent)};
+  var sp=opts.spaceId;
+  if(sp===undefined && window.SideSpaces && isFn(window.SideSpaces.current)){
+    try{ sp=window.SideSpaces.current(); }catch(e){ sp=null; }
+  }
+  /* "default" is SideSpaces' implicit no-daemon space; the daemon has no such
+     record, so send a cwd instead of a spaceId it would reject. */
+  if(sp && sp!=="default") body.spaceId=str(sp);
+  if(!body.spaceId){
+    var cwd=opts.cwd || (HEALTH&&HEALTH.workspace) || null;
+    if(!cwd) return Promise.resolve({ok:false,error:"the daemon did not report a workspace"});
+    body.cwd=str(cwd);
+  }
+  return post("/api/acp/session",body);
+}
+
+function start(nodeId,opts){
+  opts=opts||{};
+  nodeId=str(nodeId);
+  if(!opts.agent) return Promise.resolve({sessionId:null,error:"an agent id is required"});
+  if(offline()) return Promise.resolve({sessionId:null,error:"no daemon"});
+  return health(false).then(function(h){
+    if(!h) return {sessionId:null,error:"no daemon"};
+    if(h.acp && h.acp.enabled===false) return {sessionId:null,error:"agent connections are switched off on the daemon (SIDE_ACP=0)"};
+    return newSession(nodeId,opts).then(function(r){
+      if(!r.ok){
+        var msg=str(r.error)||"could not start the agent";
+        T(clamp("Could not start that agent: "+msg,110));
+        return {sessionId:null,error:msg,reason:(r.data&&r.data.reason)||null};
+      }
+      var d=r.data||{};
+      var S={
+        sessionId:str(d.sessionId), nodeId:nodeId,
+        agent:str(opts.agent), agentName:plain(opts.agentName||(d.agentInfo&&d.agentInfo.name)||opts.agent),
+        spaceId:d.spaceId||null, cwd:str(d.cwd),
+        runId:str(opts.runId)||("run_"+now()),
+        state:str(d.state)||"idle", sandboxed:!!d.sandboxed,
+        modes:isArr(d.modes)?d.modes:[], currentMode:d.currentMode||null,
+        commands:isArr(d.commands)?d.commands:[],
+        usage:null, stopReason:null, closedReason:null,
+        interval:POLL_FAST, timer:null, misses:0, stopped:false,
+        planArtId:null, walkArtId:null, walkIndex:{}, tools:{}, toolSeq:0,
+        perms:{}, live:null, lastNodeState:null, cappedAt:null,
+        modal:!!opts.modal
+      };
+      if(!S.sessionId) return {sessionId:null,error:"the daemon returned no sessionId"};
+      SESSIONS[S.sessionId]=S; ORDER.push(S.sessionId);
+      tx(nodeId,"sys","Connected to "+S.agentName+(S.sandboxed?" (sandboxed)":" (NOT sandboxed)")+" in "+S.cwd+".");
+      setNodeState(S,"running");
+      fire({type:"session_started",sessionId:S.sessionId},S);
+      paintPickers();
+      arm(S);
+      if(opts.prompt) return send(S.sessionId,opts.prompt,opts.mode).then(function(){ return {sessionId:S.sessionId}; });
+      return {sessionId:S.sessionId};
+    });
+  });
+}
+
+function send(sessionId,text,mode){
+  var S=SESSIONS[str(sessionId)];
+  if(!S) return Promise.resolve({ok:false,error:"unknown session"});
+  if(S.state==="closed") return Promise.resolve({ok:false,error:"that session has ended"});
+  text=str(text);
+  if(!trim(text)) return Promise.resolve({ok:false,error:"nothing to send"});
+  var body={sessionId:S.sessionId,text:text};
+  if(mode) body.mode=str(mode);
+  tx(S.nodeId,"you",text);
+  S.state="running";
+  setNodeState(S,"running");
+  return post("/api/acp/prompt",body).then(function(r){
+    if(!r.ok){
+      S.state="idle";
+      tx(S.nodeId,"sys","That message did not reach the agent ("+str(r.error)+").");
+      T("Message not sent: "+clamp(str(r.error),90));
+      return {ok:false,error:str(r.error)};
+    }
+    bump(S);
+    return {ok:true};
+  });
+}
+
+function stop(sessionId){
+  var S=SESSIONS[str(sessionId)];
+  if(!S) return Promise.resolve({ok:false,error:"unknown session"});
+  disarm(S);                       /* the loop dies first, always */
+  return post("/api/acp/stop",{sessionId:S.sessionId}).then(function(r){
+    shut(S,"you stopped it");
+    return {ok:!!r.ok,error:r.ok?null:str(r.error)};
+  });
+}
+function stopAll(){
+  var i,ids=ORDER.slice(0),out=[];
+  for(i=0;i<ids.length;i++){ if(SESSIONS[ids[i]]&&SESSIONS[ids[i]].state!=="closed") out.push(stop(ids[i])); }
+  return Promise.all(out);
+}
+
+/* A reload or a closed tab must not answer anything. Kill the timers only --
+   the daemon keeps the sessions and every open request stays open. */
+try{
+  window.addEventListener("beforeunload",function(){
+    var i,S;
+    for(i=0;i<ORDER.length;i++){ S=SESSIONS[ORDER[i]]; if(S&&S.timer){ clearTimeout(S.timer); S.timer=null; } }
+  },false);
+  document.addEventListener("visibilitychange",function(){
+    if(document.hidden) return;
+    var i,S;
+    for(i=0;i<ORDER.length;i++){
+      S=SESSIONS[ORDER[i]];
+      if(S&&!S.stopped&&S.state!=="closed"){ S.interval=POLL_FAST; arm(S); }
+    }
+  },false);
+}catch(e){}
+
+/* ---------------------------------------------------------------- picker */
+var GLYPH={
+  agent:'<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4.5" width="11" height="8" rx="2.5"/><path d="M8 1.5v3M5.5 8.5h.01M10.5 8.5h.01"/></svg>',
+  play:'<svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><path d="M5 3.6v8.8L12.4 8z"/></svg>',
+  stop:'<svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor"><rect x="4.2" y="4.2" width="7.6" height="7.6" rx="1.4"/></svg>',
+  warn:'<svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 2.6 14.4 13H1.6z"/><path d="M8 6.6v3M8 11.4h.01"/></svg>',
+  copy:'<svg viewBox="0 0 16 16" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><rect x="5.5" y="5.5" width="8" height="8" rx="1.6"/><path d="M10.5 5.5v-1a1.6 1.6 0 0 0-1.6-1.6H4.1A1.6 1.6 0 0 0 2.5 4.5v4.8a1.6 1.6 0 0 0 1.6 1.6h1"/></svg>'
+};
+
+var PICKERS=[];
+function paintPickers(){
+  var i;
+  for(i=PICKERS.length-1;i>=0;i--){
+    if(!PICKERS[i].host || !document.body.contains(PICKERS[i].host)){ PICKERS.splice(i,1); continue; }
+    try{ PICKERS[i].paint(); }catch(e){}
+  }
+}
+
+function renderPicker(hostEl,opts){
+  if(typeof hostEl==="string") hostEl=q(hostEl);
+  if(!hostEl) return null;
+  opts=opts||{};
+
+  var root=mk("div","acp-picker");
+  var head=mk("div","acp-head");
+  head.innerHTML='<span class="acp-h-t">Run this node with an agent</span>'
+    +'<span class="acp-h-s">Agents run on your machine through the Side daemon. Side never installs one for you.</span>';
+  var live=mk("div","acp-live");
+  var state=mk("div","acp-state");
+  var list=mk("div","acp-list");
+  var foot=mk("div","acp-foot");
+  root.appendChild(head); root.appendChild(live); root.appendChild(state);
+  root.appendChild(list); root.appendChild(foot);
+  hostEl.appendChild(root);
+
+  var DATA=null, busy=false, destroyed=false;
+
+  function setState(cls,html){
+    state.className="acp-state "+(cls||"");
+    state.innerHTML=html||"";
+    state.style.display=html?"":"none";
+  }
+
+  function row(a){
+    if(a.available){
+      var b=mk("button","acp-row acp-on");
+      b.type="button";
+      b.innerHTML='<span class="acp-row-ic">'+GLYPH.agent+'</span>'
+        +'<span class="acp-row-m"><span class="acp-row-n">'+esc(a.name)+'</span>'
+        +'<span class="acp-row-d">'+esc(a.version?("version "+a.version):(a.note||"installed"))+'</span></span>'
+        +(a.invocationConfirmed?'':'<span class="acp-flag" title="Side could not confirm this agent\'s ACP launch flag from its own docs">unconfirmed launch</span>')
+        +'<span class="acp-row-go">'+GLYPH.play+'<span>Start</span></span>';
+      b.addEventListener("click",function(){ startFrom(a); },false);
+      return b;
+    }
+    var d=mk("div","acp-row acp-off");
+    var inst=a.install?('<span class="acp-inst"><code class="acp-cmd">'+esc(a.install)+'</code>'
+        +'<button type="button" class="acp-cpy" title="Copy">'+GLYPH.copy+'<span>Copy</span></button></span>'):"";
+    d.innerHTML='<span class="acp-row-ic">'+GLYPH.agent+'</span>'
+      +'<span class="acp-row-m"><span class="acp-row-n">'+esc(a.name)+'</span>'
+      +'<span class="acp-row-d acp-why">'+esc(a.reason||"not available on this machine")+'</span>'+inst+'</span>'
+      +'<span class="acp-row-na">Not installed</span>';
+    var cp=q(".acp-cpy",d);
+    if(cp) cp.addEventListener("click",function(){
+      var ok=false;
+      try{
+        if(navigator.clipboard&&isFn(navigator.clipboard.writeText)){ navigator.clipboard.writeText(a.install); ok=true; }
+      }catch(e){}
+      T(ok?"Install command copied":a.install);
+    },false);
+    return d;
+  }
+
+  function startFrom(a){
+    if(busy) return;
+    busy=true; paint();
+    start(opts.nodeId,{agent:a.id,agentName:a.name,cwd:opts.cwd,spaceId:opts.spaceId,
+                       prompt:opts.prompt,mode:opts.mode,runId:opts.runId,modal:opts.modal})
+      .then(function(res){
+        busy=false;
+        if(!res.sessionId){
+          setState("acp-bad",'<span class="acp-ic">'+GLYPH.warn+'</span><span>'+esc(res.error||"could not start that agent")+'</span>');
+        }else if(isFn(opts.onStart)){
+          try{ opts.onStart(res.sessionId,a.id); }catch(e){}
+        }
+        paint();
+      });
+  }
+
+  function paintLive(){
+    var mine=[],i,all=sessions();
+    for(i=0;i<all.length;i++){
+      if(all[i].state==="closed") continue;
+      if(opts.nodeId && all[i].nodeId!==opts.nodeId) continue;
+      mine.push(all[i]);
+    }
+    if(!mine.length){ live.innerHTML=""; live.style.display="none"; return; }
+    live.style.display="";
+    live.innerHTML="";
+    for(i=0;i<mine.length;i++){
+      (function(s){
+        var r=mk("div","acp-sess acp-s-"+esc(s.state));
+        r.innerHTML='<span class="acp-dot"></span>'
+          +'<span class="acp-sess-m"><span class="acp-sess-n">'+esc(s.agentName||s.agent)+'</span>'
+          +'<span class="acp-sess-d">'+esc(s.state)
+          +(s.pendingPermissions?(" \u00B7 "+s.pendingPermissions+" waiting on you"):"")
+          +(s.sandboxed?"":" \u00B7 not sandboxed")+'</span></span>'
+          +'<button type="button" class="acp-stop">'+GLYPH.stop+'<span>Stop</span></button>';
+        q(".acp-stop",r).addEventListener("click",function(){
+          stop(s.sessionId).then(function(){ paint(); });
+        },false);
+        live.appendChild(r);
+      })(mine[i]);
+    }
+  }
+
+  function paintList(){
+    list.innerHTML="";
+    if(!DATA||!DATA.ok) return;
+    var on=[],off=[],i;
+    for(i=0;i<DATA.agents.length;i++){ (DATA.agents[i].available?on:off).push(DATA.agents[i]); }
+    if(on.length){
+      var h1=mk("div","acp-grp"); h1.textContent="Ready on this machine";
+      list.appendChild(h1);
+      for(i=0;i<on.length;i++) list.appendChild(row(on[i]));
+    }
+    if(off.length){
+      var h2=mk("div","acp-grp acp-grp-off");
+      h2.textContent="Not installed \u00B7 "+off.length;
+      list.appendChild(h2);
+      for(i=0;i<off.length;i++) list.appendChild(row(off[i]));
+    }
+  }
+
+  function paint(){
+    if(destroyed) return;
+    paintLive();
+    if(busy){ setState("acp-busy",'<span class="acp-spin"></span><span>Starting the agent&hellip;</span>'); paintList(); return; }
+    if(!DATA){ setState("acp-busy",'<span class="acp-spin"></span><span>Looking for agents&hellip;</span>'); return; }
+    if(!DATA.ok){
+      if(DATA.reason==="no daemon"){
+        setState("acp-quiet",'<span>No Side daemon is running, so there are no agents to connect to. Agents run as processes on your machine; this page on its own cannot start one.</span>');
+      }else if(DATA.reason==="acp-off"){
+        setState("acp-quiet",'<span>Agent connections are switched off on the daemon (SIDE_ACP=0).</span>');
+      }else{
+        setState("acp-bad",'<span class="acp-ic">'+GLYPH.warn+'</span><span>'+esc(DATA.error||"could not reach the daemon")+'</span>');
+      }
+      list.innerHTML=""; foot.innerHTML="";
+      return;
+    }
+    var none=true,i;
+    for(i=0;i<DATA.agents.length;i++){ if(DATA.agents[i].available){ none=false; break; } }
+    if(none){
+      setState("acp-quiet",'<span>No agent is installed on this machine yet. Every agent below is real and Side checked for it &mdash; install one and it appears here.</span>');
+    }else{
+      setState("","");
+    }
+    paintList();
+    foot.innerHTML='<span>'+esc((DATA.sessions||0)+" of "+(DATA.maxSessions||0)+" agent slots in use")+'</span>';
+  }
+
+  function refresh(){
+    DATA=null; paint();
+    return agents().then(function(res){
+      if(destroyed) return res;
+      DATA=res; paint();
+      return res;
+    });
+  }
+
+  var api={host:hostEl,root:root,paint:paint,refresh:refresh,
+    destroy:function(){
+      destroyed=true;
+      var i;
+      for(i=0;i<PICKERS.length;i++){ if(PICKERS[i]===api){ PICKERS.splice(i,1); break; } }
+      if(root.parentNode) root.parentNode.removeChild(root);
+    }};
+  PICKERS.push(api);
+  refresh();
+  return api;
+}
+
+/* ---------------------------------------------------------------- export */
+window.SideACP={
+  /* frozen contract v1 */
+  agents:agentsArray,
+  start:start,
+  send:send,
+  stop:stop,
+  sessions:sessions,
+  onUpdate:onUpdate,
+  renderPicker:renderPicker,
+  /* additive, non-breaking */
+  agentsDetail:agents,
+  stopAll:stopAll,
+  sessionFor:function(nodeId){ var S=forNode(nodeId); return S?summary(S):null; },
+  transcript:function(nodeId){ return (TRANSCRIPT[nodeId]||[]).slice(0); },
+  terminal:function(nodeId){ return (TERM[nodeId]||[]).slice(0); },
+  health:function(){ return health(true); },
+  available:function(){ return !offline(); },
+  VERSION:VERSION
+};
+
+})();
+</script>
 <script data-mod="w1a-artifacts">
 /* ============================================================
    W1-A ARTIFACT SYSTEM -- window.SideArtifacts
@@ -29989,8 +31749,37 @@ window.SideVerify = {
      --------------------------------------------------------- */
   loadItems();
 
+  /* Mutate an artifact in place, then persist + repaint. Streaming producers
+     (the ACP driver's evolving plan) need to revise one artifact rather than
+     append duplicates. Without this they resort to a sentinel clear() to force
+     a notify, which works but is a hack. patch may be a partial data object or
+     a function(artifact) that mutates it. */
+  function update(artifactId, patch){
+    var a=get(artifactId);
+    if(!a){return null;}
+    if(typeof patch==='function'){ patch(a); }
+    else if(patch && typeof patch==='object'){
+      var k; a.data=a.data||{};
+      for(k in patch){ if(patch.hasOwnProperty(k)){ a.data[k]=patch[k]; } }
+    }
+    persist();
+    notify({type:'update',artifact:a});
+    return a;
+  }
+
+  /* Persist + repaint without changing any data. Producers that mutate a
+     live artifact reference in place (get() returns the stored object) need a
+     way to flush that. Without it callers resort to clear() on a sentinel node
+     id, which works but is a hack. */
+  function touch(){
+    persist();
+    notify({type:'touch'});
+  }
+
   window.SideArtifacts={
     add:add,
+    update:update,
+    touch:touch,
     forNode:forNode,
     forRun:forRun,
     get:get,

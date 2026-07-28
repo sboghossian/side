@@ -373,6 +373,35 @@ Closes the Brain loop: completed runs propose 0-3 facts, **approved through the 
 Brain compounds instead of only storing. Never write a fact without human acceptance. Cite the
 artifact each fact came from; a fact with no traceable source must not be proposed.
 
+## FROZEN CONTRACT v1 — Wave 4 (close the loop)
+
+### `window.SideACP` — W4-A, prefix `.acp-`
+The **browser-side driver**. The daemon speaks ACP; nothing calls it yet. This is the connective tissue.
+```js
+SideACP.agents()                       // -> Promise<[{id,name,available,reason,install}]>
+SideACP.start(nodeId, opts)            // opts {agent,cwd,spaceId,prompt} -> Promise<{sessionId}>
+SideACP.send(sessionId, text, mode)    // -> Promise
+SideACP.stop(sessionId)                // -> Promise
+SideACP.sessions()                     // -> [{sessionId,nodeId,agent,state}]
+SideACP.onUpdate(fn)                   // -> unsubscribe
+SideACP.renderPicker(hostEl, opts)     // agent chooser
+```
+Poll `/api/acp/poll` and route each update shape:
+- `plan` -> a `plan` artifact via `SideArtifacts.add` (update in place, do not append duplicates)
+- `tool_call` -> node state + a `walkthrough` section
+- `message_chunk` -> the node's live transcript (`window.ndOnNodeState` / `.ndz-msgs`)
+- `terminal` -> the terminal component
+- **`permission_request` -> `SideGate2.push(...)`, and the human's decision POSTs back to
+  `/api/acp/permission`.** Nothing may auto-answer. This is the whole point of the wave.
+Degrade silently with no daemon. Respect `SideBudget` where token counts are reported.
+
+### Brain reads real facts — W4-B, prefix `.brf-`
+`buildBrainView` currently renders `BRAINFACTS` (5757), `NODES_DEF` (17571), `SOURCES` (17623),
+`LEARN` (17627) — hardcoded, zero `localStorage`. Make it read `side_brain_facts` (written by
+`SideBrainWrite.accept`) **merged with** the existing demo set, with demo clearly labelled and an
+honest empty state when there are no real facts. Do not delete the demo data: it is what sells Side
+to someone who has not run anything yet. Additive module, no rewrite of the Brain view.
+
 ## Wave 3 — Engine (after W2 integrated)
 - **W3-A** ACP client adapter (Python, feature-flagged beside `claude -p`).
   Maps `session/request_permission` -> Side's gate, `session/update` -> node state stream (live, finally),
