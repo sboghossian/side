@@ -2677,6 +2677,7 @@ textarea.inp{resize:vertical;min-height:74px;line-height:1.5}
   <div class="chrome">
     <a class="brand brand-home" href="#" data-nav="home2" title="Home &middot; press H"><span class="mk"></span><b class="bw">Side</b><kbd class="cr-kbd">H</kbd></a>
     <div class="crumbs" id="crumbs"><div class="aswitch" id="aswitch"></div></div>
+    <div id="spc-mount"></div>
     <div class="ctabs" id="ctabs"></div>
     <span class="sp"></span>
     <button class="chrome-cmd" id="chrome-cmd" title="Command palette"><span class="i" data-ic="search"></span> <span class="cc-lbl">Search</span> <kbd>&#8984;K</kbd></button>
@@ -3767,6 +3768,17 @@ function runEngine(){
     setTimeout(function(){n.status='done';if(el)el.className='node done'+(n.big?' big':'');drawEdges();i++;step();},640);
   })();
 }
+/* Triggers: runEngine is host-internal, so expose a runner the trigger poll
+   loop can call. A triggered run takes the SAME path as a manual click, so the
+   budget cap and the approval gate apply by construction, not by convention. */
+window.__sideTrgRunner=function(t){
+  if(!t||!t.slug||!GRAPHS[t.slug])return false;
+  curSlug=t.slug;
+  if(typeof navTo==='function')navTo('canvas');
+  Z=0.72;if(typeof applyZoom==='function')applyZoom();
+  runEngine();
+  return true;
+};
 function hydrateEdges(){}
 
 /* ---- live canvas actions: add / fork / duplicate a node ---- */
@@ -5119,6 +5131,9 @@ try{var _cm0=sideCanvasMode();var _capp=document.getElementById('s-app');if(_cap
 try{var _fmbtn=document.getElementById('tb-flowmap');if(_fmbtn)_fmbtn.addEventListener('click',function(){sideSetCanvasMode(sideCanvasMode()==='flow'?'map':'flow');});}catch(e){}
 try{var _bdbtn=document.getElementById('tb-board');if(_bdbtn)_bdbtn.addEventListener('click',function(){sideSetCanvasMode(sideCanvasMode()==='board'?'flow':'board');});}catch(e){}
 sideStateRestore();
+/* Spaces picker mounts in the post-SCRIPT-MARK bootstrap at the end of this
+   file. It CANNOT mount here: window.SideSpaces does not exist yet at this
+   point in parse order (hard rule 15). */
 function sideEngineOn(){return !!(window.SideEngine&&window.SideEngine.hasKey&&window.SideEngine.hasKey());}
 function sideDaemonSave(relpath,content,cb){
   try{
@@ -22483,7 +22498,2590 @@ body.gt2-lock{overflow:hidden}
   .bud-pf-cap-wrap{margin-left:0}
 }
 </style>
+<style id="w3b-spaces">
+/* ==========================================================================
+   W3-B  Spaces picker  --  prefix .spc-
+   A Space = a folder + a branch + a slice of the Brain + the nodes allowed
+   to touch it. A per-branch checkout underneath, implementation detail
+   only -- never named as such anywhere a person reads.
+   One component, one breakpoint flip (700px) to a bottom sheet, same as
+   the gate v2 pattern in this codebase. No daemon -> single "Default" row,
+   presented as such, not a fake list.
+   ========================================================================== */
+
+.spc-picker{position:relative;display:inline-block;font-family:var(--sans)}
+
+/* ---- trigger ------------------------------------------------------------ */
+.spc-trigger{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:8px 12px 8px 10px;border-radius:100px;
+  border:1px solid var(--line-strong);background:var(--surface);
+  color:var(--ink);font-size:.84rem;font-weight:560;
+  box-shadow:var(--shadow-sm);transition:.16s;max-width:220px;
+}
+.spc-trigger:hover{border-color:var(--ink-3)}
+.spc-trigger.spc-open{border-color:var(--accent-line);color:var(--ink)}
+.spc-trigger-dot{width:8px;height:8px;border-radius:50%;background:var(--line-strong);flex:none}
+.spc-trigger-dot.spc-dirty{background:var(--warn)}
+.spc-trigger-dot.spc-busy{background:var(--accent)}
+.spc-trigger-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px}
+.spc-trigger-chev{color:var(--ink-3);font-size:.62rem;flex:none;transition:transform .15s}
+.spc-trigger.spc-open .spc-trigger-chev{transform:rotate(180deg)}
+
+.spc-trigger.spc-compact{padding:8px;border-radius:50%;max-width:none}
+.spc-trigger.spc-compact .spc-trigger-name,
+.spc-trigger.spc-compact .spc-trigger-chev{display:none}
+
+/* ---- scrim (mobile only, see media block) -------------------------------- */
+.spc-scrim{display:none}
+
+/* ---- panel ---------------------------------------------------------------- */
+.spc-panel{
+  position:absolute;top:calc(100% + 8px);left:0;z-index:130;
+  width:328px;max-width:min(328px,88vw);
+  background:var(--surface);border:1px solid var(--line-strong);
+  border-radius:var(--r-md);box-shadow:var(--shadow-lg);
+  padding:6px;display:none;max-height:76vh;overflow:auto;
+  opacity:0;transform:translateY(-4px) scale(.98);
+  transition:opacity .14s ease,transform .14s ease;
+}
+.spc-panel.spc-on{display:block;opacity:1;transform:none}
+.spc-panel-head{display:flex;align-items:center;gap:8px;padding:8px 8px 7px;border-bottom:1px solid var(--line);margin-bottom:5px}
+.spc-panel-title{font-family:var(--mono);font-size:.66rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3)}
+.spc-panel-close{margin-left:auto;display:none}
+
+.spc-loading,.spc-empty{padding:16px 10px;text-align:center;font-size:.8rem;color:var(--ink-3);line-height:1.45}
+.spc-empty .spc-empty-lead{color:var(--ink-2);font-weight:600;margin-bottom:3px}
+
+.spc-list{display:flex;flex-direction:column;gap:2px}
+
+/* ---- row ------------------------------------------------------------------ */
+.spc-row{border-radius:10px;padding:2px}
+.spc-row-main{display:flex;align-items:center;gap:9px;padding:8px 8px;border-radius:9px;cursor:pointer;text-align:left;width:100%;background:none}
+.spc-row-main:hover{background:var(--surface-2)}
+.spc-row.spc-cur .spc-row-main{background:var(--surface-2)}
+.spc-row-body{display:flex;align-items:center;gap:2px}
+.spc-row-dot{width:7px;height:7px;border-radius:50%;background:var(--line-strong);flex:none;margin-top:1px}
+.spc-row-dot.spc-dirty{background:var(--warn)}
+.spc-row-dot.spc-busy{background:var(--accent)}
+.spc-row-txt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.spc-row-name{font-size:.86rem;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spc-row-curtag{font-family:var(--mono);font-size:.58rem;font-weight:700;letter-spacing:.04em;color:var(--accent-strong);text-transform:uppercase;margin-left:6px}
+.spc-row-meta{font-size:.72rem;color:var(--ink-3)}
+.spc-row-meta.spc-meta-dirty{color:var(--warn)}
+.spc-row-meta.spc-meta-busy{color:var(--accent-strong)}
+.spc-row-del{
+  flex:none;width:26px;height:26px;display:grid;place-items:center;border-radius:50%;
+  color:var(--ink-3);font-size:.72rem;opacity:0;transition:.14s;
+}
+.spc-row-main:hover + .spc-row-del,.spc-row:hover .spc-row-del,.spc-row-del:focus-visible{opacity:1}
+.spc-row-del:hover{background:var(--accent-soft);color:var(--accent-strong)}
+.spc-row{display:flex;align-items:center;gap:2px}
+.spc-row-main{flex:1;min-width:0}
+
+/* ---- destructive confirm block --------------------------------------------- */
+.spc-confirm{margin:2px 4px 6px;padding:10px 11px;border-radius:11px;background:var(--surface-2);border:1px solid var(--line-2)}
+.spc-confirm.spc-confirm-force{background:rgba(232,70,31,.08);border-color:var(--accent-line)}
+.spc-confirm-text{display:flex;align-items:flex-start;gap:7px;font-size:.76rem;line-height:1.42;color:var(--ink-2)}
+.spc-confirm-force .spc-confirm-text{color:var(--accent-strong)}
+.spc-confirm-ic{flex:none;line-height:1.4;font-weight:700}
+.spc-confirm-acts{display:flex;gap:8px;margin-top:9px}
+
+.spc-btn{
+  flex:1;font-family:var(--sans);font-size:.78rem;font-weight:600;
+  padding:8px 10px;border-radius:9px;border:1px solid transparent;
+  background:var(--surface);color:var(--ink-2);border-color:var(--line-strong);
+  transition:.14s;text-align:center;
+}
+.spc-btn:hover{border-color:var(--ink-3);color:var(--ink)}
+.spc-btn:disabled{opacity:.55;cursor:default}
+.spc-btn-danger{background:var(--accent-strong);color:#fff;border-color:var(--accent-strong)}
+.spc-btn-danger:hover{filter:brightness(1.05)}
+.spc-btn-primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.spc-btn-primary:hover{filter:brightness(1.1)}
+
+/* ---- new-space form -------------------------------------------------------- */
+.spc-newwrap{border-top:1px solid var(--line);margin-top:5px;padding-top:5px}
+.spc-newbtn{
+  width:100%;display:flex;align-items:center;gap:7px;
+  padding:9px 8px;border-radius:9px;font-size:.84rem;font-weight:600;color:var(--ink-2);
+}
+.spc-newbtn:hover{background:var(--surface-2);color:var(--ink)}
+.spc-newbtn-ic{font-size:.9rem;color:var(--accent-strong);flex:none}
+
+.spc-newform{padding:8px 6px 4px}
+.spc-newname{
+  width:100%;box-sizing:border-box;border:1px solid var(--line-strong);border-radius:9px;
+  background:var(--surface);color:var(--ink);font-family:var(--sans);font-size:.88rem;
+  padding:9px 11px;outline:none;
+}
+.spc-newname:focus{border-color:var(--accent-line)}
+.spc-advtoggle{display:inline-flex;align-items:center;gap:4px;font-size:.7rem;font-weight:600;color:var(--ink-3);margin-top:7px;padding:2px 0}
+.spc-advtoggle:hover{color:var(--ink-2)}
+.spc-advtoggle-chev{font-size:.6rem;transition:transform .14s}
+.spc-advtoggle.spc-on .spc-advtoggle-chev{transform:rotate(90deg)}
+.spc-adv{display:none;margin-top:7px;flex-direction:column;gap:7px}
+.spc-adv.spc-on{display:flex}
+.spc-advlbl{display:flex;flex-direction:column;gap:3px;font-size:.66rem;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:var(--ink-3)}
+.spc-advlbl input{
+  font-family:var(--mono);font-size:.78rem;font-weight:500;text-transform:none;letter-spacing:0;
+  color:var(--ink);border:1px solid var(--line-2);border-radius:8px;background:var(--surface-2);
+  padding:7px 9px;outline:none;
+}
+.spc-advlbl input:focus{border-color:var(--accent-line);background:var(--surface)}
+.spc-advlbl input::placeholder{color:var(--muted)}
+
+.spc-newactions{display:flex;gap:8px;margin-top:10px}
+.spc-newerr{font-size:.72rem;color:var(--accent-strong);margin-top:7px;line-height:1.4}
+.spc-note{font-size:.72rem;color:var(--ink-3);line-height:1.42;padding:9px 8px 6px}
+
+/* ==========================================================================
+   mobile: same component, bottom sheet at <=700px
+   ========================================================================== */
+@media(max-width:700px){
+  .spc-scrim{
+    display:block;position:fixed;inset:0;z-index:129;
+    background:rgba(24,22,19,.34);opacity:0;pointer-events:none;
+    transition:opacity .18s ease;
+  }
+  .spc-scrim.spc-on{opacity:1;pointer-events:auto}
+  body.spc-lock{overflow:hidden}
+
+  .spc-panel{
+    position:fixed;top:auto;left:0;right:0;bottom:0;z-index:130;
+    width:100%;max-width:100%;max-height:80vh;
+    border-radius:18px 18px 0 0;border-bottom:none;
+    padding:8px 8px calc(10px + env(safe-area-inset-bottom));
+    transform:translateY(100%);opacity:1;transition:transform .22s cubic-bezier(.2,.9,.25,1);
+  }
+  .spc-panel.spc-on{transform:none}
+  .spc-panel-head{padding:9px 8px 8px calc(4px + env(safe-area-inset-left))}
+  .spc-panel-close{
+    display:grid;place-items:center;width:30px;height:30px;border-radius:50%;
+    color:var(--ink-3);background:var(--surface-2);font-size:.8rem;
+  }
+  .spc-row-main{padding:11px 8px;min-height:48px}
+  .spc-row-del{opacity:1;width:36px;height:36px}
+  .spc-row-name{font-size:.92rem}
+  .spc-row-meta{font-size:.76rem}
+  .spc-btn{min-height:44px;font-size:.86rem}
+  .spc-newname{font-size:16px;padding:11px}   /* 16px stops iOS zoom-on-focus */
+  .spc-newbtn{padding:12px 8px;min-height:46px}
+}
+</style>
+<style id="w3c-triggers">
+/* prefix: .trg- (W3-C: schedule / webhook / filechange triggers) */
+
+.trg-studio{font-family:var(--sans);display:flex;flex-direction:column;gap:14px;max-width:560px}
+
+.trg-banner{font-size:.76rem;line-height:1.5;color:var(--ink-2);background:var(--surface-2);border:1px solid var(--line-2);border-radius:var(--r-md);padding:10px 13px}
+.trg-banner-warn{color:var(--warn);background:var(--warn-soft);border-color:transparent}
+
+.trg-form{background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r-md);box-shadow:var(--shadow-sm);padding:14px 15px 15px;display:flex;flex-direction:column;gap:10px}
+.trg-form-kind{display:flex;gap:6px}
+.trg-kind-tab{font-family:var(--sans);font-size:.76rem;font-weight:600;color:var(--ink-3);background:var(--surface-2);border:1px solid var(--line-2);border-radius:100px;padding:6px 12px;cursor:pointer;transition:.15s}
+.trg-kind-tab:hover{color:var(--ink-2)}
+.trg-kind-tab.on{color:#fff;background:var(--accent);border-color:var(--accent)}
+
+.trg-field{display:flex;flex-direction:column;gap:5px}
+.trg-field-lbl{font-family:var(--mono);font-size:.64rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3)}
+.trg-input,.trg-select{font-family:var(--sans);font-size:.86rem;color:var(--ink);background:var(--surface-2);border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:8px 10px;outline:none;width:100%}
+.trg-input:focus,.trg-select:focus{border-color:var(--accent-line);background:var(--surface)}
+.trg-input.mono,.trg-rrule-input{font-family:var(--mono);font-size:.78rem}
+.trg-slug-free{max-width:260px}
+
+.trg-preview{font-size:.82rem;color:var(--ink);background:var(--surface-2);border-radius:var(--r-sm);padding:9px 11px;line-height:1.5}
+.trg-preview-err{color:var(--warn);background:var(--warn-soft)}
+.trg-preview-note{color:var(--ink-3);font-size:.72rem}
+.trg-preview-rrule{color:var(--ink-3);font-size:.68rem;margin-top:5px;word-break:break-all}
+
+.trg-advanced{font-size:.76rem}
+.trg-advanced summary{color:var(--ink-3);cursor:pointer;font-weight:600;padding:2px 0}
+.trg-advanced summary:hover{color:var(--ink-2)}
+.trg-advanced .trg-input{margin-top:7px}
+
+.trg-caveat{display:flex;align-items:flex-start;gap:6px;font-size:.72rem;line-height:1.45;color:var(--ink-2);background:var(--surface-2);border-radius:var(--r-sm);padding:8px 10px}
+
+.trg-add-btn{align-self:flex-start;font-family:var(--sans);font-size:.82rem;font-weight:640;color:#fff;background:var(--accent);border:none;border-radius:var(--r-sm);padding:8px 16px;cursor:pointer;transition:.15s}
+.trg-add-btn:hover{background:var(--accent-strong)}
+
+.trg-list{display:flex;flex-direction:column;gap:9px}
+.trg-empty{font-size:.8rem;color:var(--ink-3);line-height:1.5;padding:14px;text-align:center;background:var(--surface-2);border-radius:var(--r-md)}
+
+.trg-card{background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r-md);box-shadow:var(--shadow-sm);padding:11px 13px 12px;display:flex;flex-direction:column;gap:6px}
+.trg-card-off{opacity:.55}
+
+.trg-card-head{display:flex;align-items:center;gap:8px}
+.trg-card-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.88rem;font-weight:600;color:var(--ink)}
+
+.trg-badge{font-family:var(--mono);font-size:.6rem;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:100px;flex:none}
+.trg-badge-schedule{color:var(--good);background:var(--good-soft)}
+.trg-badge-webhook{color:var(--info);background:var(--info-soft)}
+.trg-badge-filechange{color:var(--violet);background:var(--violet-soft)}
+
+.trg-toggle{position:relative;display:inline-block;flex:none;cursor:pointer}
+.trg-toggle input{position:absolute;opacity:0;width:1px;height:1px}
+.trg-toggle-track{display:block;width:32px;height:18px;border-radius:100px;background:var(--surface-3);border:1px solid var(--line-strong);transition:.15s;position:relative}
+.trg-toggle-knob{position:absolute;top:1px;left:1px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(40,30,20,.25);transition:.15s}
+.trg-toggle input:checked + .trg-toggle-track{background:var(--good);border-color:var(--good)}
+.trg-toggle input:checked + .trg-toggle-track .trg-toggle-knob{left:15px}
+.trg-toggle input:focus-visible + .trg-toggle-track{outline:2px solid var(--accent);outline-offset:2px}
+
+.trg-card-slug{font-size:.74rem;color:var(--ink-3)}
+.trg-card-slug b{color:var(--ink-2);font-weight:600}
+
+.trg-card-rrule{font-size:.72rem;color:var(--ink-3);background:var(--surface-2);border-radius:var(--r-sm);padding:6px 9px;word-break:break-all}
+.trg-url-code{color:var(--info)}
+
+.trg-card-next{font-size:.78rem;color:var(--ink-2);font-weight:560}
+.trg-card-meta{font-size:.72rem;color:var(--ink-3);line-height:1.5}
+.trg-flag{display:inline-block;font-size:.66rem;font-weight:600;padding:1px 6px;border-radius:100px;margin-left:4px}
+.trg-flag-skip{color:var(--warn);background:var(--warn-soft)}
+.trg-flag-err{color:var(--accent-strong);background:rgba(232,70,31,.10)}
+
+.trg-card-late{display:flex;align-items:flex-start;gap:6px;font-size:.72rem;line-height:1.45;color:var(--warn);background:var(--warn-soft);border-radius:var(--r-sm);padding:7px 9px}
+
+.trg-card-acts{display:flex;gap:8px;margin-top:2px}
+.trg-run-now,.trg-copy,.trg-remove{font-family:var(--sans);font-size:.72rem;font-weight:600;background:none;border:1px solid var(--line-strong);border-radius:var(--r-sm);padding:5px 10px;cursor:pointer;color:var(--ink-2);transition:.15s}
+.trg-run-now:hover,.trg-copy:hover{border-color:var(--accent-line);color:var(--ink)}
+.trg-run-now:disabled{opacity:.4;cursor:not-allowed}
+.trg-remove{color:var(--ink-3)}
+.trg-remove:hover{color:var(--accent-strong);border-color:var(--accent-line)}
+
+@media(max-width:520px){
+  .trg-studio{max-width:100%}
+  .trg-form-kind{flex-wrap:wrap}
+  .trg-card-acts{flex-wrap:wrap}
+}
+</style>
+<style id="w3d-brainwrite">
+/* ==========================================================================
+   W3-D  Brain write-back  --  prefix .bwb-
+   Review queue for facts a completed run proposes for the Brain. Nothing
+   here writes anything; every card is a human decision (accept/reject).
+   ========================================================================== */
+
+.bwb-root{font-family:var(--sans);color:var(--ink);}
+
+.bwb-head{display:flex;align-items:center;gap:8px;padding:2px 0 12px;}
+.bwb-title{font-size:.95rem;font-weight:700;letter-spacing:-.01em;}
+.bwb-count{
+  font-family:var(--mono);font-size:.68rem;font-weight:700;color:var(--ink-2);
+  background:var(--surface-2);border:1px solid var(--line-2);border-radius:100px;
+  padding:2px 9px;min-width:18px;text-align:center;line-height:1.5;
+}
+
+.bwb-empty{
+  font-size:.82rem;color:var(--ink-2);line-height:1.55;
+  background:var(--surface-2);border:1px dashed var(--line-strong);
+  border-radius:var(--r-md);padding:16px 18px;
+}
+
+.bwb-list{display:flex;flex-direction:column;gap:10px;}
+
+.bwb-card{
+  background:var(--surface);border:1px solid var(--line-2);border-radius:var(--r-md);
+  box-shadow:var(--shadow-sm);padding:13px 14px 12px;
+}
+
+.bwb-fact{font-size:.9rem;font-weight:560;line-height:1.48;color:var(--ink);margin:0 0 8px;}
+
+.bwb-meta{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+
+.bwb-conf{
+  font-family:var(--mono);font-size:.62rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  border-radius:100px;padding:3px 9px;white-space:nowrap;border:1px solid transparent;
+}
+.bwb-conf-high{color:var(--good);background:var(--good-soft);border-color:var(--good);}
+.bwb-conf-medium{color:var(--warn);background:var(--warn-soft);border-color:var(--warn);}
+.bwb-conf-low{color:var(--ink-3);background:var(--surface-2);border-color:var(--line-strong);}
+
+.bwb-demo{
+  font-family:var(--mono);font-size:.6rem;font-weight:700;letter-spacing:.05em;
+  color:var(--warn);background:var(--warn-soft);border:1px solid var(--warn);
+  border-radius:100px;padding:2px 8px;white-space:nowrap;
+}
+
+.bwb-demonote{
+  font-size:.72rem;color:var(--ink-3);line-height:1.5;margin:0 0 9px;
+  background:var(--surface-2);border-radius:8px;padding:7px 9px;
+}
+
+.bwb-src-btn{
+  display:inline-flex;align-items:center;max-width:100%;
+  font-family:var(--sans);font-size:.72rem;font-weight:560;color:var(--ink-2);
+  background:transparent;border:1px solid var(--line-2);border-radius:8px;
+  padding:5px 9px;cursor:pointer;transition:border-color .14s,color .14s,background .14s;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.bwb-src-btn:hover{border-color:var(--accent-line);color:var(--accent-strong);background:var(--accent-soft);}
+
+.bwb-src-body{
+  max-height:0;overflow:hidden;opacity:0;
+  transition:max-height .2s ease,opacity .18s ease;
+  border-radius:var(--r-sm);
+}
+.bwb-src-body.on{
+  max-height:520px;overflow-y:auto;opacity:1;margin-top:9px;
+  border:1px solid var(--line);background:var(--paper);padding:2px;
+}
+
+.bwb-actions{display:flex;gap:8px;margin-top:11px;}
+
+.bwb-btn{
+  flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  font-family:var(--sans);font-size:.78rem;font-weight:600;
+  padding:8px 10px;border-radius:var(--r-sm);border:1px solid var(--line-strong);
+  background:var(--surface);color:var(--ink);cursor:pointer;
+  transition:border-color .14s,color .14s,background .14s,transform .1s;
+}
+.bwb-btn:active{transform:scale(.98);}
+
+.bwb-reject:hover{border-color:var(--accent-line);color:var(--accent-strong);background:var(--accent-soft);}
+
+.bwb-accept{background:var(--good);border-color:var(--good);color:#fff;}
+.bwb-accept:hover{background:color-mix(in srgb,var(--good) 86%,#000);}
+
+@media(max-width:520px){
+  .bwb-actions{flex-direction:column;}
+  .bwb-btn{width:100%;}
+}
+</style>
 <!-- ==SCRIPT-MARK== -->
+<script data-mod="w3d-brainwrite">
+/* ============================================================
+   BRAIN WRITE-BACK (bwb-) -- window.SideBrainWrite
+   Closes the Brain read/write loop: a completed run can propose
+   0-3 durable facts, each citing the artifact it came from. Facts
+   sit in a pending queue until a human accepts or rejects them.
+   Nothing reaches the Brain without acceptance. Strict ES5. Only
+   verified window.* surfaces (SideArtifacts, SideEngine, hydrate,
+   sideBrainChipAdd) are touched, and every call is guarded.
+   ============================================================ */
+(function(){
+  if(window.__sideBwb)return;window.__sideBwb=1;
+
+  var PENDING_KEY = "side_brain_pending";
+  var FACTS_KEY = "side_brain_facts";
+
+  /* ---------------------------------------------------------------- utils */
+
+  function now(){ return Date.now(); }
+
+  function trim(s){ return (""+(s==null?"":s)).replace(/^\s+|\s+$/g,""); }
+
+  function clamp(s,n){
+    s = ""+(s==null?"":s);
+    return s.length>n ? s.slice(0,n-1)+"..." : s;
+  }
+
+  function esc(s){
+    return (""+(s==null?"":s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  function isArr(v){
+    if(typeof Array.isArray==="function") return Array.isArray(v);
+    return Object.prototype.toString.call(v)==="[object Array]";
+  }
+
+  function isPlainObj(v){
+    return !!(v && typeof v==="object" && !isArr(v));
+  }
+
+  function nextId(){
+    return "bwbp_"+now()+"_"+Math.random().toString(36).slice(2,8);
+  }
+
+  function HY(el){
+    if(typeof window.hydrate==="function"){ try{ window.hydrate(el); }catch(eHy){} }
+  }
+
+  /* --------------------------------------------------- host bridge guards */
+
+  function engineOn(){
+    try{
+      return !!(window.SideEngine && typeof window.SideEngine.hasKey==="function" &&
+        window.SideEngine.hasKey() && typeof window.SideEngine.call==="function");
+    }catch(e){ return false; }
+  }
+
+  function artifactsForRunNode(runId, nodeId){
+    try{
+      if(!window.SideArtifacts || typeof window.SideArtifacts.forRun!=="function") return [];
+      var all = window.SideArtifacts.forRun(runId) || [];
+      var out = [];
+      for(var i=0;i<all.length;i++){
+        if(all[i] && all[i].nodeId===nodeId) out.push(all[i]);
+      }
+      return out;
+    }catch(e){ return []; }
+  }
+
+  function findArtifactById(arts, artifactId){
+    for(var i=0;i<arts.length;i++){ if(arts[i] && arts[i].id===artifactId) return arts[i]; }
+    return null;
+  }
+
+  /* ---------------------------------------------------------------- store */
+
+  var PENDING = [];
+  var FACTS = [];
+
+  function initStores(){
+    try{
+      if(window.location && window.location.search && window.location.search.indexOf("reset=1")>=0){
+        localStorage.removeItem(PENDING_KEY);
+        localStorage.removeItem(FACTS_KEY);
+      }
+    }catch(eReset){}
+    try{
+      var rawP = window.localStorage ? localStorage.getItem(PENDING_KEY) : null;
+      if(rawP){ var pp = JSON.parse(rawP); if(isArr(pp)) PENDING = pp; }
+    }catch(eP){}
+    try{
+      var rawF = window.localStorage ? localStorage.getItem(FACTS_KEY) : null;
+      if(rawF){ var ff = JSON.parse(rawF); if(isArr(ff)) FACTS = ff; }
+    }catch(eF){}
+  }
+
+  function persistPending(){ try{ localStorage.setItem(PENDING_KEY, JSON.stringify(PENDING)); }catch(e){} }
+  function persistFacts(){ try{ localStorage.setItem(FACTS_KEY, JSON.stringify(FACTS)); }catch(e){} }
+
+  var LISTENERS = [];
+  function notify(evt){
+    for(var i=0;i<LISTENERS.length;i++){ try{ LISTENERS[i](evt); }catch(eN){} }
+  }
+  function onChange(fn){
+    if(typeof fn!=="function") return function(){};
+    LISTENERS.push(fn);
+    return function unsubscribe(){
+      var idx = LISTENERS.indexOf(fn);
+      if(idx>=0) LISTENERS.splice(idx,1);
+    };
+  }
+
+  function addPending(list){
+    if(!list || !list.length) return;
+    for(var i=0;i<list.length;i++){ PENDING.push(list[i]); }
+    persistPending();
+    notify({ type:"propose", items:list });
+  }
+
+  /* --------------------------------------------------- artifact -> prompt */
+
+  var MAXITEMS = 8, MAXTOTAL = 3200;
+
+  function summarizeOne(tag, a){
+    var d = a.data || {};
+    var line = "["+tag+"] ["+(a.type||"?")+"] "+clamp(a.title||"(untitled)",60)+": ";
+    if(a.type==="plan"){
+      var steps = d.steps||[];
+      var done=0;
+      for(var j=0;j<steps.length;j++){ if(steps[j] && steps[j].status==="done") done++; }
+      line += steps.length+" steps ("+done+" done)";
+    } else if(a.type==="checklist"){
+      var items = d.items||[];
+      var ck=0;
+      for(var k=0;k<items.length;k++){ if(items[k] && items[k].checked) ck++; }
+      line += ck+"/"+items.length+" items checked";
+      var samp=[];
+      for(var m=0;m<Math.min(items.length,4);m++){
+        samp.push(((items[m]&&items[m].checked)?"[x] ":"[ ] ")+clamp((items[m]&&items[m].text)||"",40));
+      }
+      if(samp.length) line += " -- "+samp.join("; ");
+    } else if(a.type==="walkthrough"){
+      var secs = d.sections||[];
+      var heads=[];
+      for(var p=0;p<secs.length;p++){ heads.push(clamp((secs[p]&&secs[p].heading)||"",30)); }
+      line += secs.length+" sections: "+heads.join(", ");
+    } else if(a.type==="screenshot"){
+      line += "an image (not inspected -- only the caption is available): "+clamp(d.caption||"(no caption)",80);
+    } else if(a.type==="recording"){
+      line += "a video recording (not inspected -- only the caption is available): "+clamp(d.caption||"(no caption)",80);
+    } else if(a.type==="file-change"){
+      var plainTxt;
+      if(typeof d.plain==="string" && d.plain) plainTxt=d.plain;
+      else if(d.plain && typeof d.plain==="object") plainTxt=(d.plain.before||"")+" -> "+(d.plain.after||"");
+      else plainTxt="(no plain-language summary)";
+      line += "file "+clamp(d.path||"?",60)+" -- "+clamp(plainTxt,150);
+    } else if(a.type==="summary"){
+      line += clamp(d.text||"",220);
+    } else {
+      line += "(unrecognized artifact type)";
+    }
+    return line;
+  }
+
+  function summarizeForBrain(arts){
+    var lines = [];
+    var map = {};
+    var n = Math.min(arts.length, MAXITEMS);
+    for(var i=0;i<n;i++){
+      var tag = "A"+(i+1);
+      map[tag] = arts[i].id;
+      lines.push(summarizeOne(tag, arts[i]));
+    }
+    if(arts.length>MAXITEMS) lines.push("...and "+(arts.length-MAXITEMS)+" more artifact(s) not shown.");
+    var out = lines.join("\n");
+    if(out.length>MAXTOTAL) out = out.slice(0,MAXTOTAL)+"\n...(truncated)";
+    return { text: out, map: map };
+  }
+
+  /* ---------------------------------------------------------------- LLM */
+
+  var BRAINWRITE_SYS =
+    "You are extracting durable knowledge for a permanent library called the Brain, inside an app called Side. " +
+    "You will be given a numbered list of ARTIFACTS produced by one completed agent run. Propose at most 3 " +
+    "facts worth remembering permanently, or fewer, or none. A fact must be DURABLE: still true and useful a " +
+    "month from now (a decision made, a convention adopted, a stable property of the codebase, product or " +
+    "world, a fixed preference or constraint). A fact must NOT be EPISODIC: never propose something true only " +
+    "about this one run, such as a status, a timestamp, a duration, a step count, or a phrase like the run " +
+    "finished or tests passed. Every fact must be traceable to exactly one artifact in the list -- cite it by " +
+    "its bracketed id, for example [A2]. Never invent or reuse an id that was not given to you. If nothing in " +
+    "the artifacts is both durable and clearly supported, return an empty list; proposing nothing is always " +
+    "correct, proposing something unsupported or guessed is never correct. Reply with STRICT JSON ONLY, no " +
+    "prose, no markdown fences, exactly this shape: {\"facts\":[{\"text\":\"one short durable sentence\"," +
+    "\"source\":\"A1\",\"confidence\":\"high\"|\"medium\"|\"low\"}]}. 0 to 3 items in the array.";
+
+  function parseJsonBlock(text){
+    text = text || "";
+    var s = text.indexOf("{");
+    var e = text.lastIndexOf("}");
+    if(s===-1 || e===-1 || e<s) return null;
+    try{ return JSON.parse(text.substring(s,e+1)); }catch(e2){ return null; }
+  }
+
+  var EPISODIC_RE = [
+    /\bfinished at\b/i, /\bstarted at\b/i, /\bjust (now|ran|finished)\b/i,
+    /\b\d{1,2}:\d{2}(:\d{2})?\s*(am|pm)?\b/i, /\btook \d+\s*(ms|sec|second|min|minute|hour)/i,
+    /\brun (started|completed|finished|failed)\b/i, /\bstatus (is|was)\b/i,
+    /\bcompleted (in|at)\b/i, /\belapsed\b/i, /\btoday\b/i, /\byesterday\b/i
+  ];
+
+  function isEpisodic(text){
+    for(var i=0;i<EPISODIC_RE.length;i++){ if(EPISODIC_RE[i].test(text)) return true; }
+    return false;
+  }
+
+  function buildFactsFromParsed(parsed, map, arts, runId, nodeId){
+    var out = [];
+    if(!isPlainObj(parsed) || !isArr(parsed.facts)) return out;
+    for(var i=0;i<parsed.facts.length && out.length<3;i++){
+      var f = parsed.facts[i];
+      if(!isPlainObj(f)) continue;
+      var text = trim(""+(f.text||""));
+      if(!text) continue;
+      text = clamp(text,240);
+      if(isEpisodic(text)) continue;
+      var srcTag = trim(""+(f.source||""));
+      /* hard rule: no traceable citation, no proposal. a bad/missing/
+         invented tag is dropped here, never surfaced to the human. */
+      if(!srcTag || !map.hasOwnProperty(srcTag)) continue;
+      var artifactId = map[srcTag];
+      var art = findArtifactById(arts, artifactId);
+      if(!art) continue;
+      var conf = f.confidence;
+      if(conf!=="high" && conf!=="medium" && conf!=="low") conf = "medium";
+      out.push({
+        id: nextId(),
+        runId: runId,
+        nodeId: nodeId,
+        text: text,
+        source: { artifactId: art.id, type: art.type, title: art.title||"" },
+        confidence: conf,
+        demo: false,
+        proposedAt: now()
+      });
+    }
+    return out;
+  }
+
+  /* ------------------------------------------------------------- demo */
+
+  var DEMO_TEMPLATES = {
+    "plan": "This kind of task is broken into a multi-step plan before execution.",
+    "checklist": "There is an established checklist standard used to verify this kind of task.",
+    "walkthrough": "This part of the product has a walkthrough documenting how it is meant to work.",
+    "screenshot": "The current visual layout of this screen is kept as a reference.",
+    "recording": "The expected behavior of this flow is kept as a reference recording.",
+    "file-change": "Changes to this file follow the project's existing conventions.",
+    "summary": "There is a summary convention used to close out this kind of run."
+  };
+
+  var DEMO_NOTE = "Demo mode: this is a simulated proposal for illustration, not a real extraction. Add an API key in Settings for real proposals.";
+
+  function demoFacts(runId, nodeId, arts){
+    var out = [];
+    for(var i=0;i<arts.length && out.length<3;i++){
+      var a = arts[i];
+      var t = a && DEMO_TEMPLATES[a.type];
+      if(!t) continue;
+      out.push({
+        id: nextId(),
+        runId: runId,
+        nodeId: nodeId,
+        text: t,
+        source: { artifactId: a.id, type: a.type, title: a.title||"" },
+        confidence: "medium",
+        demo: true,
+        demoNote: DEMO_NOTE,
+        proposedAt: now()
+      });
+    }
+    return out;
+  }
+
+  /* ---------------------------------------------------------------- API */
+
+  function propose(runId, nodeId){
+    return new Promise(function(resolve){
+      try{
+        runId = ""+(runId||"");
+        nodeId = ""+(nodeId||"");
+        if(!runId || !nodeId){ resolve([]); return; }
+
+        var arts = artifactsForRunNode(runId, nodeId);
+        if(!arts.length){ resolve([]); return; }
+
+        var isDemoRun = runId.indexOf("run_demo_")===0;
+        if(isDemoRun || !engineOn()){
+          var df = demoFacts(runId, nodeId, arts);
+          addPending(df);
+          resolve(df);
+          return;
+        }
+
+        var built = summarizeForBrain(arts);
+        if(!built.text){ resolve([]); return; }
+
+        var mid = (window.SideEngine.MODELS && (window.SideEngine.MODELS["Haiku"] || window.SideEngine.MODELS["Local"])) ||
+          "claude-haiku-4-5-20251001";
+
+        window.SideEngine.call({ model:mid, maxTokens:400, system:BRAINWRITE_SYS, user:built.text }, function(err, res){
+          try{
+            if(err){ resolve([]); return; }
+            var parsed = parseJsonBlock(res && res.text);
+            var facts = buildFactsFromParsed(parsed, built.map, arts, runId, nodeId);
+            if(facts.length) addPending(facts);
+            resolve(facts);
+          }catch(eCb){ resolve([]); }
+        });
+      }catch(eAll){ resolve([]); }
+    });
+  }
+
+  function pending(){
+    var out = PENDING.slice();
+    out.sort(function(a,b){ return (b.proposedAt||0)-(a.proposedAt||0); });
+    return out;
+  }
+
+  function findPendingIdx(id){
+    for(var i=0;i<PENDING.length;i++){ if(PENDING[i] && PENDING[i].id===id) return i; }
+    return -1;
+  }
+
+  function accept(id){
+    try{
+      var idx = findPendingIdx(id);
+      if(idx===-1) return null;
+      var entry = PENDING[idx];
+      PENDING.splice(idx,1);
+      persistPending();
+
+      var accepted = {
+        id: entry.id,
+        text: entry.text,
+        source: entry.source,
+        confidence: entry.confidence,
+        demo: !!entry.demo,
+        runId: entry.runId,
+        nodeId: entry.nodeId,
+        proposedAt: entry.proposedAt,
+        acceptedAt: now()
+      };
+      FACTS.push(accepted);
+      persistFacts();
+
+      try{
+        if(entry.source && entry.source.artifactId && window.SideArtifacts && typeof window.SideArtifacts.comment==="function"){
+          window.SideArtifacts.comment(entry.source.artifactId, "Accepted into the Brain: \""+entry.text+"\"", null, "agent");
+        }
+      }catch(eCm){}
+      try{
+        if(typeof window.sideBrainChipAdd==="function"){ window.sideBrainChipAdd(entry.text); }
+      }catch(eChip){}
+
+      notify({ type:"accept", id:id, fact:accepted });
+      return accepted;
+    }catch(eAll){ return null; }
+  }
+
+  function reject(id){
+    try{
+      var idx = findPendingIdx(id);
+      if(idx===-1) return false;
+      PENDING.splice(idx,1);
+      persistPending();
+      notify({ type:"reject", id:id });
+      return true;
+    }catch(eAll){ return false; }
+  }
+
+  /* -------------------------------------------------------------- UI */
+
+  function filteredList(opts){
+    var out = pending();
+    if(opts && opts.runId){
+      var r=[]; for(var i=0;i<out.length;i++){ if(out[i].runId===opts.runId) r.push(out[i]); } out=r;
+    }
+    if(opts && opts.nodeId){
+      var r2=[]; for(var j=0;j<out.length;j++){ if(out[j].nodeId===opts.nodeId) r2.push(out[j]); } out=r2;
+    }
+    return out;
+  }
+
+  function confLabel(c){ return c==="high"?"high":c==="low"?"low":"medium"; }
+
+  function cardHtml(f, expanded){
+    var demo = f.demo ? '<span class="bwb-demo">DEMO</span>' : "";
+    var confCls = "bwb-conf-"+confLabel(f.confidence);
+    var conf = '<span class="bwb-conf '+confCls+'">'+esc(confLabel(f.confidence))+' confidence</span>';
+    var srcType = (f.source && f.source.type) || "artifact";
+    var srcTitle = (f.source && f.source.title) ? clamp(f.source.title,60) : "(untitled artifact)";
+    var srcBtnLbl = expanded ? "Hide source" : ("Source: ["+srcType+"] "+srcTitle);
+    var html = '<div class="bwb-card">';
+    html += '<div class="bwb-fact">'+esc(f.text)+'</div>';
+    html += '<div class="bwb-meta">'+conf+demo+'</div>';
+    if(f.demo){
+      html += '<div class="bwb-demonote">'+esc(f.demoNote||DEMO_NOTE)+'</div>';
+    }
+    html += '<button type="button" class="bwb-src-btn" data-bwb-src="'+esc(f.id)+'">'+esc(srcBtnLbl)+'</button>';
+    html += '<div class="bwb-src-body'+(expanded?' on':'')+'" data-bwb-srcbody="'+esc(f.id)+'"></div>';
+    html += '<div class="bwb-actions">';
+    html += '<button type="button" class="bwb-btn bwb-reject" data-bwb-reject="'+esc(f.id)+'">Reject</button>';
+    html += '<button type="button" class="bwb-btn bwb-accept" data-bwb-accept="'+esc(f.id)+'">Accept into Brain</button>';
+    html += '</div></div>';
+    return html;
+  }
+
+  function renderReview(hostEl, opts){
+    opts = opts || {};
+    var host = hostEl;
+    if(typeof host==="string"){ try{ host=document.querySelector(host); }catch(eSel){ host=null; } }
+    if(!host) return null;
+
+    var expanded = {};
+    var destroyed = false;
+
+    function mountSource(id){
+      var body = host.querySelector('[data-bwb-srcbody="'+id+'"]');
+      if(!body) return;
+      body.innerHTML = "";
+      var entry = null;
+      for(var i=0;i<PENDING.length;i++){ if(PENDING[i] && PENDING[i].id===id){ entry=PENDING[i]; break; } }
+      if(!entry || !entry.source){ body.textContent = "Source artifact not found."; return; }
+      var art = null;
+      try{
+        if(window.SideArtifacts && typeof window.SideArtifacts.get==="function"){
+          art = window.SideArtifacts.get(entry.source.artifactId);
+        }
+      }catch(eGet){}
+      if(art && window.SideArtifacts && typeof window.SideArtifacts.render==="function"){
+        try{ window.SideArtifacts.render(art, body, { compact:true, readOnly:true }); }
+        catch(eRen){ body.textContent = "Could not render source artifact."; }
+      } else {
+        body.textContent = "Source artifact "+entry.source.artifactId+" is no longer available.";
+      }
+    }
+
+    function draw(){
+      if(destroyed) return;
+      var items = filteredList(opts);
+      var html = '<div class="bwb-root">';
+      html += '<div class="bwb-head"><span class="bwb-title">'+(opts.title?esc(opts.title):"Brain proposals")+'</span>'+
+        '<span class="bwb-count">'+items.length+'</span></div>';
+      if(!items.length){
+        html += '<div class="bwb-empty">No pending facts right now. A completed run can propose up to 3 durable facts here, each linked to the artifact it came from, for you to accept or reject.</div>';
+      } else {
+        html += '<div class="bwb-list">';
+        for(var i=0;i<items.length;i++){ html += cardHtml(items[i], !!expanded[items[i].id]); }
+        html += '</div>';
+      }
+      html += '</div>';
+      host.innerHTML = html;
+      HY(host);
+      for(var k in expanded){ if(expanded.hasOwnProperty(k) && expanded[k]) mountSource(k); }
+      wire();
+    }
+
+    function wire(){
+      var i, srcBtns = host.querySelectorAll("[data-bwb-src]");
+      for(i=0;i<srcBtns.length;i++){
+        (function(btn){
+          var id = btn.getAttribute("data-bwb-src");
+          btn.addEventListener("click", function(){ expanded[id] = !expanded[id]; draw(); });
+        })(srcBtns[i]);
+      }
+      var accBtns = host.querySelectorAll("[data-bwb-accept]");
+      for(i=0;i<accBtns.length;i++){
+        (function(btn){
+          var id = btn.getAttribute("data-bwb-accept");
+          btn.addEventListener("click", function(){ accept(id); draw(); });
+        })(accBtns[i]);
+      }
+      var rejBtns = host.querySelectorAll("[data-bwb-reject]");
+      for(i=0;i<rejBtns.length;i++){
+        (function(btn){
+          var id = btn.getAttribute("data-bwb-reject");
+          btn.addEventListener("click", function(){ reject(id); draw(); });
+        })(rejBtns[i]);
+      }
+    }
+
+    draw();
+    var unsub = onChange(function(){ draw(); });
+
+    return {
+      refresh: draw,
+      destroy: function(){
+        destroyed = true;
+        try{ unsub(); }catch(eU){}
+        try{ host.innerHTML = ""; }catch(eH){}
+      }
+    };
+  }
+
+  /* --------------------------------------------------------------- init */
+
+  initStores();
+
+  window.SideBrainWrite = {
+    propose: propose,
+    pending: pending,
+    accept: accept,
+    reject: reject,
+    renderReview: renderReview,
+    onChange: onChange
+  };
+
+})();
+</script>
+<script data-mod="w3c-triggers">
+(function(){
+"use strict";
+if(window.__sideTrg)return;window.__sideTrg=1;
+
+/* ==========================================================================
+   window.SideTriggers -- schedule / webhook / filechange triggers (W3-C)
+   Frozen contract v1:
+     SideTriggers.list() / .add(t) / .remove(id) / .toggle(id,on)
+     SideTriggers.due(nowMs)        -> [trigger]   pure, testable
+     SideTriggers.nextFire(t,nowMs) -> ms|null      pure, testable
+     SideTriggers.renderStudio(hostEl, opts)
+   t = {id, kind:"schedule"|"webhook"|"filechange", slug, enabled, rrule,
+        url, path, lastFired}
+   Persists under "side_triggers". Honours ?reset=1.
+
+   RRULE (RFC 5545) subset supported: FREQ=DAILY|WEEKLY|HOURLY, INTERVAL,
+   BYDAY, BYHOUR, BYMINUTE, COUNT, UNTIL. Anything else in the string is
+   parsed defensively and reported back via parseRRule(...).rejected --
+   never silently dropped, never silently honoured.
+
+   due()/nextFire() never call Date.now() or `new Date()` with no args --
+   every clock read happens exactly once, in fireIfDue() below, and the
+   result is threaded in as an argument. This is what makes the schedule
+   math independently testable and makes a missed window detectable
+   instead of silently skipped.
+
+   CATCH-UP POLICY (decided here, not left ambiguous):
+   If Side was closed across one or more scheduled fires, the NEXT time it
+   is open and polls, the trigger runs exactly ONCE using the most recent
+   missed occurrence, and every earlier missed occurrence is explicitly
+   reported as skipped (trigger.lastSkipped, shown in the Studio) -- never
+   silently dropped, never replayed as a backlog of N runs. Rationale:
+   Side's whole pitch is "the job happens when you are not there" -- a
+   trigger that quietly does nothing because the laptop was shut is the
+   exact failure this module exists to prevent. Replaying every missed
+   occurrence would be worse: it would spend the user's budget cap on
+   history instead of the present. "Run once, late, and say so" is the
+   only option that is both honest and safe.
+   ========================================================================== */
+
+var STORE_KEY = "side_triggers";
+var RUNNER_SEED_KEY = "__sideTrgRunner"; /* window.__sideTrgRunner, seeded pre-mark by the host splice */
+var POLL_MS = 20000;           /* how often the open tab checks for due triggers */
+var INITIAL_DELAY_MS = 1800;   /* let the host finish its own boot before the first check */
+var LATE_GRACE_MS = 90000;     /* an occurrence found more than this long after itself = "late" */
+var CATCHUP_SCAN_CAP = 2000;   /* bound on how many missed occurrences we count (not run) */
+var OCC_ITER_CAP_HOURLY = 100000;
+var OCC_ITER_CAP_DAILY = 20000;
+var OCC_ITER_CAP_WEEKLY = 3000;
+
+var DAY_NAMES = ["SU","MO","TU","WE","TH","FR","SA"]; /* index === Date.prototype.getDay() */
+var DAY_FULL = {SU:"Sunday",MO:"Monday",TU:"Tuesday",WE:"Wednesday",TH:"Thursday",FR:"Friday",SA:"Saturday"};
+
+/* ---------------------------------------------------------------- utils */
+
+function trim(s){ return (""+(s==null?"":s)).replace(/^\s+|\s+$/g,""); }
+
+function esc(s){
+  return (""+(s==null?"":s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function isArr(v){
+  if(typeof Array.isArray==="function") return Array.isArray(v);
+  return Object.prototype.toString.call(v)==="[object Array]";
+}
+
+function isPlainObj(v){ return !!(v && typeof v==="object" && !isArr(v)); }
+
+function pad2(n){ n=Math.floor(n); return (n<10?"0":"")+n; }
+
+function dayIdx(code){ for(var i=0;i<7;i++){ if(DAY_NAMES[i]===code) return i; } return -1; }
+
+function cloneTrigger(t){
+  var c = {}, k;
+  for(k in t){ if(Object.prototype.hasOwnProperty.call(t,k)) c[k]=t[k]; }
+  return c;
+}
+
+var SEQ = 1;
+function uid(){ return "trg_"+Date.now().toString(36)+"_"+(SEQ++); }
+
+/* ----------------------------------------------------------- RRULE parse */
+
+/* parseRRule(str) -> {freq, interval, byday[], byhour[], byminute[],
+   count, until, rejected[]}
+   freq stays null if FREQ is missing or unsupported -- callers must check
+   it before trusting anything else in the object. `rejected` lists every
+   token that was recognised-but-unsupported or unrecognised, so a caller
+   can tell the user exactly what got dropped instead of pretending the
+   whole string was honoured. */
+function parseRRule(str){
+  var out = {freq:null, interval:1, byday:[], byhour:[], byminute:[], count:null, until:null, rejected:[]};
+  if(!str) return out;
+  var parts = String(str).split(";");
+  var i, kv, k, v;
+  for(i=0;i<parts.length;i++){
+    if(!trim(parts[i])) continue;
+    kv = parts[i].split("=");
+    if(kv.length<2){ out.rejected.push(parts[i]+" (malformed)"); continue; }
+    k = trim(kv[0]).toUpperCase();
+    v = trim(kv.slice(1).join("="));
+    if(k==="FREQ"){
+      var f = v.toUpperCase();
+      if(f==="DAILY"||f==="WEEKLY"||f==="HOURLY"){ out.freq=f; }
+      else { out.rejected.push("FREQ="+v+" (only DAILY, WEEKLY, HOURLY are supported)"); }
+    } else if(k==="INTERVAL"){
+      var n = parseInt(v,10);
+      out.interval = (isFinite(n) && n>0) ? n : 1;
+      if(!(isFinite(n) && n>0)) out.rejected.push("INTERVAL="+v+" (not a positive integer, using 1)");
+    } else if(k==="BYDAY"){
+      var days = v.split(","), d, rawDay, code;
+      for(d=0; d<days.length; d++){
+        rawDay = trim(days[d]).toUpperCase();
+        if(/^[-+]?[0-9]/.test(rawDay)){
+          /* RFC ordinal-prefixed BYDAY ("2MO" = second Monday of the period) means
+             something different from a plain weekday and this subset does not
+             implement ordinal/positional matching -- reject it outright rather than
+             silently stripping the digits and treating "2MO" as if it just meant
+             "every Monday", which would quietly change what the rule means. */
+          out.rejected.push("BYDAY="+days[d]+" (ordinal-prefixed BYDAY is not supported)");
+          continue;
+        }
+        code = rawDay;
+        if(dayIdx(code)!==-1) out.byday.push(code);
+        else out.rejected.push("BYDAY="+days[d]+" (not a recognised weekday)");
+      }
+    } else if(k==="BYHOUR"){
+      var hrs = v.split(","), h, hv;
+      for(h=0; h<hrs.length; h++){
+        hv = parseInt(hrs[h],10);
+        if(isFinite(hv) && hv>=0 && hv<24) out.byhour.push(hv);
+        else out.rejected.push("BYHOUR="+hrs[h]+" (must be 0-23)");
+      }
+    } else if(k==="BYMINUTE"){
+      var mins = v.split(","), m, mv;
+      for(m=0; m<mins.length; m++){
+        mv = parseInt(mins[m],10);
+        if(isFinite(mv) && mv>=0 && mv<60) out.byminute.push(mv);
+        else out.rejected.push("BYMINUTE="+mins[m]+" (must be 0-59)");
+      }
+    } else if(k==="COUNT"){
+      var c = parseInt(v,10);
+      if(isFinite(c) && c>0) out.count=c; else out.rejected.push("COUNT="+v+" (not a positive integer)");
+    } else if(k==="UNTIL"){
+      var u = parseUntil(v);
+      if(u!=null) out.until=u; else out.rejected.push("UNTIL="+v+" (unrecognised date format)");
+    } else {
+      out.rejected.push(k+"="+v+" (not in the supported subset)");
+    }
+  }
+  out.byhour.sort(function(a,b){ return a-b; });
+  out.byminute.sort(function(a,b){ return a-b; });
+  return out;
+}
+
+/* RFC 5545 UNTIL: "20260801T090000Z" or bare "20260801". Both are treated
+   as UTC instants (bare-date form floats to end-of-day UTC), matching how
+   the spec's UTC form works. Returns ms or null on unrecognised input. */
+function parseUntil(v){
+  var m = /^(\d{4})(\d{2})(\d{2})(T(\d{2})(\d{2})(\d{2})Z?)?$/.exec(trim(v));
+  if(!m) return null;
+  var y=+m[1], mo=+m[2]-1, d=+m[3];
+  var hh = m[5]!=null ? +m[5] : 23;
+  var mi = m[6]!=null ? +m[6] : 59;
+  var ss = m[7]!=null ? +m[7] : 59;
+  return Date.UTC(y,mo,d,hh,mi,ss);
+}
+
+function serializeRRule(p){
+  var parts = ["FREQ="+p.freq];
+  if(p.interval && p.interval>1) parts.push("INTERVAL="+p.interval);
+  if(p.byday && p.byday.length) parts.push("BYDAY="+p.byday.join(","));
+  if(p.byhour && p.byhour.length) parts.push("BYHOUR="+p.byhour.join(","));
+  if(p.byminute && p.byminute.length) parts.push("BYMINUTE="+p.byminute.join(","));
+  if(p.count!=null) parts.push("COUNT="+p.count);
+  if(p.until!=null) parts.push("UNTIL="+isoUtc(p.until));
+  return parts.join(";");
+}
+
+function isoUtc(ms){
+  var d = new Date(ms);
+  return d.getUTCFullYear()+pad2(d.getUTCMonth()+1)+pad2(d.getUTCDate())+"T"+pad2(d.getUTCHours())+pad2(d.getUTCMinutes())+pad2(d.getUTCSeconds())+"Z";
+}
+
+/* ------------------------------------------------------ occurrence engine
+   All three generators return {occ: ms|null, idx: number}. `idx` is the
+   0-based position of `occ` in the rule's occurrence sequence (or, when
+   occ is null, the count of valid occurrences already walked before
+   giving up -- used only for diagnostics, never trusted for COUNT math
+   after a null).
+
+   DAILY/WEEKLY step by LOCAL CALENDAR FIELDS (new Date(y,mo,da+k,...)),
+   not by adding a fixed 86400000ms -- this is what keeps "every day at
+   9am" landing on 9am local time across a DST transition instead of
+   drifting by an hour. HOURLY steps by literal elapsed milliseconds,
+   because "every N hours" is an elapsed-time contract, not a wall-clock
+   one -- across a DST transition it will visibly skip or double a local
+   hour label, which is correct given what HOURLY promises. Both choices
+   are deliberate and covered by the throwaway DST tests (see build report).
+   ------------------------------------------------------------------------ */
+
+function passesCount(p, idx){ return !(p.count!=null && idx>=p.count); }
+function passesUntil(p, cand){ return !(p.until!=null && cand>p.until); }
+
+function occHourly(p, dtstartMs, sinceMs, inclusive){
+  var intervalMs = p.interval*3600000;
+  var base = new Date(dtstartMs);
+  base.setSeconds(0,0);
+  base.setMinutes(p.byminute.length ? p.byminute[0] : base.getMinutes());
+  var baseMs = base.getTime();
+  var filterHour = p.byhour.length>0;
+  var idx=0, k, cand, hh, hi, ok;
+  for(k=0;k<OCC_ITER_CAP_HOURLY;k++){
+    cand = baseMs + k*intervalMs;
+    if(filterHour){
+      hh = new Date(cand).getHours();
+      ok=false; for(hi=0;hi<p.byhour.length;hi++){ if(p.byhour[hi]===hh){ ok=true; break; } }
+      if(!ok) continue;
+    }
+    if(!passesCount(p, idx)) return {occ:null, idx:idx};
+    if(!passesUntil(p, cand)) return {occ:null, idx:idx};
+    if(inclusive ? cand>=sinceMs : cand>sinceMs) return {occ:cand, idx:idx};
+    idx++;
+  }
+  return {occ:null, idx:idx};
+}
+
+function occDaily(p, dtstartMs, sinceMs, inclusive){
+  var ds = new Date(dtstartMs);
+  var ay=ds.getFullYear(), amo=ds.getMonth(), ada=ds.getDate();
+  var hours = p.byhour.length ? p.byhour : [ds.getHours()];
+  var minutes = p.byminute.length ? p.byminute : [ds.getMinutes()];
+  var haveFilter = p.byday.length>0;
+  var idx=0, k, day, dow, code, ok, di, Y, Mo, Da, hi, mi, cand;
+  for(k=0;k<OCC_ITER_CAP_DAILY;k++){
+    day = new Date(ay, amo, ada + k*p.interval, 0,0,0,0);
+    if(haveFilter){
+      dow = day.getDay(); code = DAY_NAMES[dow];
+      ok=false; for(di=0;di<p.byday.length;di++){ if(p.byday[di]===code){ ok=true; break; } }
+      if(!ok) continue;
+    }
+    Y=day.getFullYear(); Mo=day.getMonth(); Da=day.getDate();
+    for(hi=0;hi<hours.length;hi++){
+      for(mi=0;mi<minutes.length;mi++){
+        cand = new Date(Y,Mo,Da,hours[hi],minutes[mi],0,0).getTime();
+        if(!passesCount(p, idx)) return {occ:null, idx:idx};
+        if(!passesUntil(p, cand)) return {occ:null, idx:idx};
+        if(inclusive ? cand>=sinceMs : cand>sinceMs) return {occ:cand, idx:idx};
+        idx++;
+      }
+    }
+  }
+  return {occ:null, idx:idx};
+}
+
+function occWeekly(p, dtstartMs, sinceMs, inclusive){
+  var ds = new Date(dtstartMs);
+  var ay=ds.getFullYear(), amo=ds.getMonth(), ada=ds.getDate();
+  var hours = p.byhour.length ? p.byhour : [ds.getHours()];
+  var minutes = p.byminute.length ? p.byminute : [ds.getMinutes()];
+  var days = p.byday.length ? p.byday.slice(0) : [DAY_NAMES[ds.getDay()]];
+  var idx=0, w, off, day, dow, code, ok, di, Y, Mo, Da, hi, mi, cand;
+  for(w=0; w<OCC_ITER_CAP_WEEKLY; w++){
+    for(off=0; off<7; off++){
+      day = new Date(ay, amo, ada + w*p.interval*7 + off, 0,0,0,0);
+      dow = day.getDay(); code = DAY_NAMES[dow];
+      ok=false; for(di=0;di<days.length;di++){ if(days[di]===code){ ok=true; break; } }
+      if(!ok) continue;
+      Y=day.getFullYear(); Mo=day.getMonth(); Da=day.getDate();
+      for(hi=0;hi<hours.length;hi++){
+        for(mi=0;mi<minutes.length;mi++){
+          cand = new Date(Y,Mo,Da,hours[hi],minutes[mi],0,0).getTime();
+          if(!passesCount(p, idx)) return {occ:null, idx:idx};
+          if(!passesUntil(p, cand)) return {occ:null, idx:idx};
+          if(inclusive ? cand>=sinceMs : cand>sinceMs) return {occ:cand, idx:idx};
+          idx++;
+        }
+      }
+    }
+  }
+  return {occ:null, idx:idx};
+}
+
+function anchorMs(t){ return (t.dtstart!=null) ? Number(t.dtstart) : (t.createdAt||0); }
+
+/* occurrenceAfter(t, sinceMs, inclusive) -> ms|null
+   The single primitive due()/nextFire() are both built from. No clock
+   reads -- sinceMs is always supplied by the caller. */
+function occurrenceAfter(t, sinceMs, inclusive){
+  if(!t || t.kind!=="schedule") return null;
+  var p = parseRRule(t.rrule);
+  if(!p.freq) return null;
+  var dtstartMs = anchorMs(t);
+  var res;
+  if(p.freq==="HOURLY") res = occHourly(p, dtstartMs, sinceMs, inclusive);
+  else if(p.freq==="DAILY") res = occDaily(p, dtstartMs, sinceMs, inclusive);
+  else if(p.freq==="WEEKLY") res = occWeekly(p, dtstartMs, sinceMs, inclusive);
+  else return null;
+  return res.occ;
+}
+
+/* SideTriggers.nextFire(t, nowMs) -> ms|null -- PURE. */
+function nextFire(t, nowMs){
+  try{
+    if(!t || t.kind!=="schedule") return null;
+    return occurrenceAfter(t, nowMs, true);
+  }catch(e){ return null; }
+}
+
+/* catchupInfo(t, nowMs) -> {occurrence, skipped, capped} | null
+   Collapses any backlog of missed occurrences since t.lastFired down to
+   the single most recent one, reporting how many earlier ones were
+   intentionally not run. Bounded by CATCHUP_SCAN_CAP so a trigger left
+   alone for years cannot make this scan unbounded. */
+function catchupInfo(t, nowMs){
+  var after = (t.lastFired!=null) ? Number(t.lastFired) : (anchorMs(t)-1);
+  var first = occurrenceAfter(t, after, false);
+  if(first==null || first>nowMs) return null;
+  var cursor = first, count=1, capped=false, nxt;
+  while(true){
+    nxt = occurrenceAfter(t, cursor, false);
+    if(nxt==null || nxt>nowMs) break;
+    cursor = nxt; count++;
+    if(count>=CATCHUP_SCAN_CAP){ capped=true; break; }
+  }
+  return {occurrence:cursor, skipped:count-1, capped:capped};
+}
+
+/* SideTriggers.due(nowMs) -> [trigger] -- PURE (reads the in-memory store,
+   which is not "the clock" -- no Date.now()/new Date() with no args
+   anywhere on this path). Each returned trigger is a clone carrying three
+   extra, additive fields describing the pending fire: _occurrence (ms),
+   _skipped (count of earlier missed occurrences being discarded), _late
+   (bool, occurrence is more than LATE_GRACE_MS in the past). */
+function due(nowMs){
+  var out = [], i, t, info, copy;
+  for(i=0;i<TRIGGERS.length;i++){
+    t = TRIGGERS[i];
+    if(!t || !t.enabled || t.kind!=="schedule") continue;
+    info = catchupInfo(t, nowMs);
+    if(info){
+      copy = cloneTrigger(t);
+      copy._occurrence = info.occurrence;
+      copy._skipped = info.skipped;
+      copy._skipCapped = info.capped;
+      copy._late = (nowMs - info.occurrence) > LATE_GRACE_MS;
+      out.push(copy);
+    }
+  }
+  return out;
+}
+
+/* ---------------------------------------------------------------- store */
+
+var TRIGGERS = [];
+
+function loadStore(){
+  try{
+    if(window.location && window.location.search && window.location.search.indexOf("reset=1")>=0){
+      if(window.localStorage) localStorage.removeItem(STORE_KEY);
+    }
+  }catch(eR){}
+  try{
+    var raw = window.localStorage ? localStorage.getItem(STORE_KEY) : null;
+    if(raw){
+      var parsed = JSON.parse(raw);
+      if(isArr(parsed)) TRIGGERS = parsed;
+    }
+  }catch(eL){}
+}
+
+function persist(){
+  try{ if(window.localStorage) localStorage.setItem(STORE_KEY, JSON.stringify(TRIGGERS)); }catch(e){}
+}
+
+var LISTENERS = [];
+function notify(evt){
+  for(var i=0;i<LISTENERS.length;i++){ try{ LISTENERS[i](evt); }catch(e){} }
+}
+function onChange(fn){
+  if(typeof fn!=="function") return function(){};
+  LISTENERS.push(fn);
+  return function(){
+    var idx=-1, i;
+    for(i=0;i<LISTENERS.length;i++){ if(LISTENERS[i]===fn){ idx=i; break; } }
+    if(idx!==-1) LISTENERS.splice(idx,1);
+  };
+}
+
+function findById(id){
+  for(var i=0;i<TRIGGERS.length;i++){ if(TRIGGERS[i] && TRIGGERS[i].id===id) return TRIGGERS[i]; }
+  return null;
+}
+
+/* SideTriggers.list() -> [trigger] (defensive copies) */
+function list(){ return TRIGGERS.map(cloneTrigger); }
+
+/* SideTriggers.get(id) -> trigger|null */
+function get(id){ var t=findById(id); return t?cloneTrigger(t):null; }
+
+/* SideTriggers.add(t) -> trigger | {error}
+   Normalises the frozen shape, validates a schedule's RRULE parses to a
+   real FREQ before accepting it (never stores a trigger that can never
+   fire without saying so), stamps dtstart/createdAt, persists. */
+function add(t){
+  t = t || {};
+  var kind = (t.kind==="webhook" || t.kind==="filechange") ? t.kind : "schedule";
+  var id = t.id ? String(t.id) : uid();
+  var rec = {
+    id: id,
+    kind: kind,
+    slug: t.slug!=null ? String(t.slug) : "",
+    enabled: t.enabled!==false,
+    rrule: kind==="schedule" ? String(t.rrule||"") : "",
+    url: kind==="webhook" ? webhookUrlFor(id) : "",
+    path: kind==="filechange" ? String(t.path||"") : "",
+    title: t.title!=null ? String(t.title).slice(0,80) : "",
+    dtstart: t.dtstart!=null ? Number(t.dtstart) : Date.now(),
+    createdAt: Date.now(),
+    lastFired: null,
+    lastSkipped: 0,
+    lastRanOk: null,
+    lastError: "",
+    lastFiredAt: null
+  };
+  if(kind==="schedule"){
+    var parsed = parseRRule(rec.rrule);
+    if(!parsed.freq){
+      return {error:"Could not understand that schedule -- FREQ must be DAILY, WEEKLY or HOURLY."};
+    }
+  }
+  TRIGGERS.push(rec);
+  persist();
+  notify({type:"add", trigger:cloneTrigger(rec)});
+  return cloneTrigger(rec);
+}
+
+/* SideTriggers.remove(id) -> bool */
+function remove(id){
+  var before = TRIGGERS.length;
+  TRIGGERS = TRIGGERS.filter(function(x){ return x.id!==id; });
+  if(TRIGGERS.length!==before){ persist(); notify({type:"remove", id:id}); return true; }
+  return false;
+}
+
+/* SideTriggers.toggle(id, on) -> bool */
+function toggle(id, on){
+  var t = findById(id);
+  if(!t) return false;
+  t.enabled = !!on;
+  persist();
+  notify({type:"toggle", trigger:cloneTrigger(t)});
+  return true;
+}
+
+function webhookUrlFor(id){
+  /* Illustrative only -- matches the daemon's existing /api/ namespace and
+     the port Side's own window already runs on, but bin/side-serve.py has
+     no route to register this today (only /api/acp/* and /api/space/* are
+     wired in this wave). Never rendered without the honesty caption --
+     see renderStudio(). */
+  return "http://127.0.0.1:4600/api/trigger/webhook/"+id;
+}
+
+/* --------------------------------------------------------------- runner
+   The actual "press Run" action is host-internal (runEngine() is not on
+   window; see build report for the exact splice). Rather than reach into
+   host internals, SideTriggers exposes a hook the host registers a
+   callback into -- either via setRunner() at any time, or by seeding
+   window.__sideTrgRunner BEFORE this module parses (this module loads
+   after SCRIPT-MARK, so a pre-mark host splice can set the global and
+   this module will pick it up lazily, the first time it is actually
+   needed -- no load-order race, see hard rule 15).
+   The registered function receives the due trigger and is expected to
+   run the SAME manual-run path (switch to its graph, call runEngine()),
+   which is what makes SideBudget's cap and SideGate2's gate apply to a
+   triggered run exactly as they apply to a manual one -- this module does
+   not duplicate or re-implement either check. */
+var _runner = null;
+function setRunner(fn){ _runner = (typeof fn==="function") ? fn : null; }
+function effectiveRunner(){
+  if(_runner) return _runner;
+  try{ if(typeof window[RUNNER_SEED_KEY]==="function") return window[RUNNER_SEED_KEY]; }catch(e){}
+  return null;
+}
+function hasRunner(){ return !!effectiveRunner(); }
+
+function markFired(id, occurrenceMs, skippedCount, ok, errMsg){
+  var t = findById(id);
+  if(!t) return;
+  t.lastFired = occurrenceMs;
+  t.lastSkipped = skippedCount||0;
+  t.lastRanOk = !!ok;
+  t.lastError = errMsg || "";
+  t.lastFiredAt = Date.now();
+  persist();
+  notify({type:"fired", trigger:cloneTrigger(t)});
+}
+
+/* Fires one already-due trigger (as produced by due()). If no runner is
+   wired yet, this deliberately does NOT advance lastFired -- the trigger
+   stays visibly due and will be retried on the next poll tick, and
+   renderStudio() surfaces this state instead of hiding it. Advancing
+   lastFired without actually running anything would itself be the
+   "silently swallowed" failure mode this module exists to avoid, just
+   moved one level up. */
+function fireTrigger(dueT){
+  var runner = effectiveRunner();
+  if(!runner){
+    notify({type:"blocked", trigger:dueT, reason:"no run-engine wired yet"});
+    return;
+  }
+  var ok=true, err="";
+  try{ runner(cloneTrigger(dueT)); }
+  catch(e){ ok=false; err = String(e && e.message ? e.message : e); }
+  markFired(dueT.id, dueT._occurrence, dueT._skipped, ok, err);
+}
+
+/* Manual out-of-band fire ("Run now" in the Studio). Deliberately does
+   NOT touch lastFired/lastSkipped -- it is a test/confidence action, not
+   a fulfilment of the schedule, so it must not perturb catch-up math. */
+function runNow(id){
+  var t = findById(id);
+  if(!t) return false;
+  var runner = effectiveRunner();
+  if(!runner) return false;
+  try{ runner(cloneTrigger(t)); }catch(e){}
+  notify({type:"runNow", trigger:cloneTrigger(t)});
+  return true;
+}
+
+function fireIfDue(){
+  var now = Date.now();
+  var list_ = due(now);
+  for(var i=0;i<list_.length;i++){ fireTrigger(list_[i]); }
+}
+
+var _pollTimer=null;
+function startPoll(){
+  if(_pollTimer) return;
+  try{ _pollTimer = setInterval(fireIfDue, POLL_MS); }catch(e){}
+  try{ setTimeout(fireIfDue, INITIAL_DELAY_MS); }catch(e2){}
+}
+
+/* ------------------------------------------------------- plain language
+   A small, deterministic phrase -> RRULE mapper, not a general NLP layer.
+   Anything it cannot parse returns {error:...} and the Studio falls back
+   to the raw RRULE field -- it never guesses silently. */
+
+function parseTimeToken(str){
+  str = trim(str).toLowerCase();
+  if(!str) return null;
+  if(str==="noon") return {h:12,m:0};
+  if(str==="midnight") return {h:0,m:0};
+  var m = /^([0-1]?[0-9]|2[0-3])(?::([0-5][0-9]))?\s*(am|pm)?$/.exec(str);
+  if(!m) return null;
+  var h=parseInt(m[1],10), mi=m[2]?parseInt(m[2],10):0, ap=m[3];
+  if(ap==="am"){ if(h===12) h=0; }
+  else if(ap==="pm"){ if(h!==12) h+=12; }
+  if(h<0||h>23) return null;
+  return {h:h,m:mi};
+}
+
+function fmtHourMin(h,m){
+  var ap = h<12 ? "AM" : "PM";
+  var hh = h%12; if(hh===0) hh=12;
+  return hh+":"+pad2(m)+" "+ap;
+}
+
+var DAY_WORDS = {
+  sunday:"SU", sun:"SU", monday:"MO", mon:"MO", tuesday:"TU", tue:"TU", tues:"TU",
+  wednesday:"WE", wed:"WE", thursday:"TH", thu:"TH", thur:"TH", thurs:"TH",
+  friday:"FR", fri:"FR", saturday:"SA", sat:"SA"
+};
+function dayLabel(code){ return DAY_FULL[code]||code; }
+
+/* parsePlain(text) -> {rrule, plain, defaultedTime} | {error} */
+function parsePlain(text){
+  var s = trim(String(text||"")).toLowerCase();
+  if(!s) return {error:'Type something like "every weekday at 9am".'};
+
+  var atMatch = /\bat\s+([0-9:apm\s]+|noon|midnight)\s*$/.exec(s);
+  var time = atMatch ? parseTimeToken(atMatch[1]) : null;
+  var defaulted = false;
+  if(!time){ time = {h:9,m:0}; defaulted = true; }
+  var base = trim(atMatch ? s.slice(0, atMatch.index) : s);
+
+  var everyHour = /^every\s+(\d+)\s+hours?$/.exec(base) || /^every\s+(\d+)\s+hours?$/.exec(s);
+  if(everyHour){
+    var hn = parseInt(everyHour[1],10)||1;
+    return {rrule:"FREQ=HOURLY;INTERVAL="+hn, plain:"Every "+hn+" hour"+(hn===1?"":"s"), defaultedTime:false};
+  }
+  if(/^(every\s+)?hour(ly)?$/.test(base)){
+    return {rrule:"FREQ=HOURLY;INTERVAL=1", plain:"Every hour", defaultedTime:false};
+  }
+
+  if(/\bweekday/.test(base)){
+    return {rrule:"FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR="+time.h+";BYMINUTE="+time.m,
+      plain:"Every weekday at "+fmtHourMin(time.h,time.m), defaultedTime:defaulted};
+  }
+  if(/\bweekend/.test(base)){
+    return {rrule:"FREQ=WEEKLY;BYDAY=SA,SU;BYHOUR="+time.h+";BYMINUTE="+time.m,
+      plain:"Every weekend at "+fmtHourMin(time.h,time.m), defaultedTime:defaulted};
+  }
+
+  var found=[], key, re, code;
+  for(key in DAY_WORDS){
+    if(!Object.prototype.hasOwnProperty.call(DAY_WORDS,key)) continue;
+    re = new RegExp("\\b"+key+"\\b");
+    if(re.test(base)){
+      code = DAY_WORDS[key];
+      if(found.indexOf(code)===-1) found.push(code);
+    }
+  }
+  if(found.length){
+    found.sort(function(a,b){ return dayIdx(a)-dayIdx(b); });
+    var labels=[]; for(var fi=0;fi<found.length;fi++) labels.push(dayLabel(found[fi]));
+    return {rrule:"FREQ=WEEKLY;BYDAY="+found.join(",")+";BYHOUR="+time.h+";BYMINUTE="+time.m,
+      plain:"Every "+labels.join("/")+" at "+fmtHourMin(time.h,time.m), defaultedTime:defaulted};
+  }
+
+  var wm = /^every\s+(\d+)\s+weeks?/.exec(s);
+  if(wm){
+    var wn = parseInt(wm[1],10)||1;
+    return {rrule:"FREQ=WEEKLY;INTERVAL="+wn+";BYHOUR="+time.h+";BYMINUTE="+time.m,
+      plain:"Every "+wn+" weeks at "+fmtHourMin(time.h,time.m), defaultedTime:defaulted};
+  }
+  var dm = /^every\s+(\d+)\s+days?/.exec(s);
+  if(dm){
+    var dn = parseInt(dm[1],10)||1;
+    return {rrule:"FREQ=DAILY;INTERVAL="+dn+";BYHOUR="+time.h+";BYMINUTE="+time.m,
+      plain:"Every "+dn+" days at "+fmtHourMin(time.h,time.m), defaultedTime:defaulted};
+  }
+  if(/^(every\s*day|daily)\b/.test(base) || base===""){
+    return {rrule:"FREQ=DAILY;BYHOUR="+time.h+";BYMINUTE="+time.m,
+      plain:"Every day at "+fmtHourMin(time.h,time.m), defaultedTime:defaulted};
+  }
+  if(/^(every\s*week|weekly)\b/.test(base)){
+    return {rrule:"FREQ=WEEKLY;BYHOUR="+time.h+";BYMINUTE="+time.m,
+      plain:"Every week at "+fmtHourMin(time.h,time.m), defaultedTime:defaulted};
+  }
+  return {error:'Couldn\'t work that out. Try "every weekday at 9am", "every 2 hours", or write the RRULE directly below.'};
+}
+
+function timesLabel(p){
+  if(!p.byhour.length && !p.byminute.length) return "";
+  var hours = p.byhour.length ? p.byhour : [0];
+  var mins = p.byminute.length ? p.byminute : [0];
+  var out=[], i, j;
+  for(i=0;i<hours.length;i++){ for(j=0;j<mins.length;j++){ out.push(fmtHourMin(hours[i],mins[j])); } }
+  return out.join(", ");
+}
+
+function sameDaySet(a,b){
+  if(a.length!==b.length) return false;
+  var sa=a.slice(0).sort(), sb=b.slice(0).sort();
+  for(var i=0;i<sa.length;i++){ if(sa[i]!==sb[i]) return false; }
+  return true;
+}
+
+/* rruleToPlain(rruleStr) -> human-readable description, used to describe
+   an EXISTING trigger's RRULE (reverse of parsePlain). RRULE stays the
+   secondary/visible-but-muted representation next to this string. */
+function rruleToPlain(rruleStr){
+  var p = parseRRule(rruleStr);
+  if(!p.freq) return "Custom schedule";
+  var out;
+  if(p.freq==="HOURLY"){
+    out = "Every "+(p.interval>1 ? (p.interval+" hours") : "hour");
+  } else if(p.freq==="DAILY"){
+    out = "Every "+(p.interval>1 ? (p.interval+" days") : "day");
+    if(p.byday.length){ var dl=[]; for(var i=0;i<p.byday.length;i++) dl.push(dayLabel(p.byday[i])); out += " on "+dl.join("/"); }
+  } else {
+    if(p.byday.length===5 && sameDaySet(p.byday,["MO","TU","WE","TH","FR"])) out="Every weekday";
+    else if(p.byday.length===2 && sameDaySet(p.byday,["SA","SU"])) out="Every weekend";
+    else if(p.byday.length){ var wl=[]; for(var j=0;j<p.byday.length;j++) wl.push(dayLabel(p.byday[j])); out="Every "+wl.join("/"); }
+    else out="Every week";
+    if(p.interval>1) out += " (every "+p.interval+" weeks)";
+  }
+  var t = timesLabel(p);
+  if(t) out += " at "+t;
+  if(p.count!=null) out += ", "+p.count+" time"+(p.count===1?"":"s")+" total";
+  if(p.until!=null) out += ", until "+new Date(p.until).toLocaleDateString();
+  if(p.rejected.length) out += " (ignored: "+p.rejected.join("; ")+")";
+  return out;
+}
+
+function fmtWhen(ms){
+  if(ms==null) return "n/a";
+  var d = new Date(ms);
+  var now = new Date();
+  var sameDay = d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth() && d.getDate()===now.getDate();
+  var timeStr = fmtHourMin(d.getHours(), d.getMinutes());
+  if(sameDay) return "Today "+timeStr;
+  var days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  var months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return days[d.getDay()]+" "+months[d.getMonth()]+" "+d.getDate()+", "+timeStr;
+}
+
+/* ============================================================ UI: Studio */
+
+/* SideTriggers.renderStudio(hostEl, opts) -> {el, refresh(), destroy()}
+   opts.slugs         : [{slug,title}]  optional -- fleets this can target.
+                         Falls back to a free-text slug field if omitted.
+   opts.currentSlug    : preselect a target fleet for new triggers.
+   Everything else (kind switch, plain-language box + live RRULE preview,
+   trigger list with next-fire / last-fired / catch-up state) is built
+   from the API above. Re-renders automatically on any store change. */
+function renderStudio(hostEl, opts){
+  opts = opts || {};
+  var slugs = isArr(opts.slugs) ? opts.slugs : null;
+  var el = document.createElement("div");
+  el.className = "trg-studio";
+  var formKind = "schedule";
+  var lastPreview = null;
+
+  function slugOptionsHtml(sel){
+    if(!slugs || !slugs.length){
+      return '<input class="trg-input trg-slug-free" type="text" placeholder="fleet slug" value="'+esc(sel||"")+'" data-trg="slugfree">';
+    }
+    var h = '<select class="trg-select" data-trg="slugsel">';
+    for(var i=0;i<slugs.length;i++){
+      var s = slugs[i];
+      h += '<option value="'+esc(s.slug)+'"'+(s.slug===sel?" selected":"")+'>'+esc(s.title||s.slug)+"</option>";
+    }
+    h += "</select>";
+    return h;
+  }
+
+  function badge(kind){
+    if(kind==="schedule") return '<span class="trg-badge trg-badge-schedule">SCHEDULE</span>';
+    if(kind==="webhook") return '<span class="trg-badge trg-badge-webhook">WEBHOOK</span>';
+    return '<span class="trg-badge trg-badge-filechange">FILE CHANGE</span>';
+  }
+
+  function cardHtml(t){
+    var h = '<div class="trg-card'+(t.enabled?"":" trg-card-off")+'" data-trg-id="'+esc(t.id)+'">';
+    h += '<div class="trg-card-head">';
+    h += badge(t.kind);
+    h += '<span class="trg-card-title">'+esc(t.title || (t.kind==="schedule" ? rruleToPlain(t.rrule) : (t.slug||"untitled")))+'</span>';
+    h += '<label class="trg-toggle"><input type="checkbox" data-trg="toggle" data-trg-id="'+esc(t.id)+'"'+(t.enabled?" checked":"")+'><span class="trg-toggle-track"><span class="trg-toggle-knob"></span></span></label>';
+    h += '</div>';
+    h += '<div class="trg-card-slug">targets <b>'+esc(t.slug||"(no fleet set)")+'</b></div>';
+
+    if(t.kind==="schedule"){
+      h += '<div class="trg-card-rrule mono">'+esc(t.rrule)+'</div>';
+      var nf = nextFire(t, Date.now());
+      h += '<div class="trg-card-next">'+(t.enabled ? ("Next: "+esc(fmtWhen(nf))) : "Paused")+'</div>';
+      if(t.lastFired!=null){
+        var line = "Last fired "+esc(fmtWhen(t.lastFired));
+        if(t.lastSkipped){ line += ' <span class="trg-flag trg-flag-skip">'+t.lastSkipped+(t.lastSkipped>=CATCHUP_SCAN_CAP-1?"+":"")+" earlier run"+(t.lastSkipped===1?"":"s")+" skipped</span>"; }
+        if(t.lastRanOk===false){ line += ' <span class="trg-flag trg-flag-err">failed to start: '+esc(t.lastError||"unknown error")+'</span>'; }
+        h += '<div class="trg-card-meta">'+line+'</div>';
+      }
+      var due0 = due(Date.now()).filter(function(x){ return x.id===t.id; })[0];
+      if(due0 && due0._late){
+        h += '<div class="trg-card-late">Due now, running late (missed while Side was closed)'+(due0._skipped?(" &middot; "+due0._skipped+" earlier occurrence"+(due0._skipped===1?"":"s")+" will be skipped, not replayed"):"")+'</div>';
+      }
+    } else if(t.kind==="webhook"){
+      h += '<div class="trg-card-rrule mono trg-url-code">'+esc(t.url)+'</div>';
+      h += '<div class="trg-caveat">Not registered with the daemon yet -- bin/side-serve.py has no webhook-intake route in this build. This URL is where it would live, not a live endpoint.</div>';
+    } else {
+      h += '<div class="trg-card-rrule mono">'+esc(t.path||"(no path set)")+'</div>';
+      h += '<div class="trg-caveat">Side does not watch the filesystem from inside the browser tab. Stored as configuration only, for when the daemon adds a watcher.</div>';
+    }
+
+    h += '<div class="trg-card-acts">';
+    if(t.kind==="schedule"){
+      h += '<button type="button" class="trg-run-now" data-trg="runnow" data-trg-id="'+esc(t.id)+'"'+(hasRunner()?"":" disabled")+'>Run now</button>';
+    }
+    if(t.kind==="webhook"){
+      h += '<button type="button" class="trg-copy" data-trg="copyurl" data-trg-id="'+esc(t.id)+'">Copy URL</button>';
+    }
+    h += '<button type="button" class="trg-remove" data-trg="remove" data-trg-id="'+esc(t.id)+'">Remove</button>';
+    h += '</div></div>';
+    return h;
+  }
+
+  function build(){
+    var triggers = list();
+    var runnerOk = hasRunner();
+
+    var html = "";
+    html += '<div class="trg-banner'+(runnerOk?"":" trg-banner-warn")+'">';
+    if(runnerOk){
+      html += "A triggered run presses the same Run button you would &middot; it still respects your budget cap and still needs your approval before anything ships. Side only checks schedules while this tab is open; if it was closed across a fire, the next check runs it once, late, and says so.";
+    } else {
+      html += "Schedules are saved and will show their next fire time, but this build of Side has not wired the run engine to fire them yet (setRunner not called). Nothing will run silently -- due triggers stay visibly due until it is.";
+    }
+    html += "</div>";
+
+    html += '<div class="trg-form">';
+    html += '<div class="trg-form-kind">';
+    html += '<button type="button" class="trg-kind-tab'+(formKind==="schedule"?" on":"")+'" data-trg="kind" data-k="schedule">Schedule</button>';
+    html += '<button type="button" class="trg-kind-tab'+(formKind==="webhook"?" on":"")+'" data-trg="kind" data-k="webhook">Webhook</button>';
+    html += '<button type="button" class="trg-kind-tab'+(formKind==="filechange"?" on":"")+'" data-trg="kind" data-k="filechange">File change</button>';
+    html += '</div>';
+
+    html += '<div class="trg-field"><span class="trg-field-lbl">Fleet</span>'+slugOptionsHtml(opts.currentSlug)+'</div>';
+
+    if(formKind==="schedule"){
+      html += '<div class="trg-field"><span class="trg-field-lbl">When</span><input class="trg-input trg-nl-input" type="text" placeholder="every weekday at 9am" data-trg="nl"></div>';
+      html += '<div class="trg-preview" data-trg="preview">Type a schedule above.</div>';
+      html += '<details class="trg-advanced"><summary>RRULE (advanced)</summary><input class="trg-input mono trg-rrule-input" type="text" placeholder="FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYHOUR=9;BYMINUTE=0" data-trg="rruleraw"></details>';
+    } else if(formKind==="webhook"){
+      html += '<div class="trg-caveat">A URL will be generated after you add this trigger. It is not registered with the daemon in this build -- see the note on the card below.</div>';
+    } else {
+      html += '<div class="trg-field"><span class="trg-field-lbl">Watch path</span><input class="trg-input" type="text" placeholder="/path/to/watch" data-trg="path"></div>';
+      html += '<div class="trg-caveat">Stored as configuration only -- there is no in-browser filesystem watcher.</div>';
+    }
+    html += '<button type="button" class="trg-add-btn" data-trg="add">Add trigger</button>';
+    html += '</div>';
+
+    html += '<div class="trg-list">';
+    if(!triggers.length){
+      html += '<div class="trg-empty">No triggers yet. A schedule you add here fires by itself -- you will not need to press Run.</div>';
+    } else {
+      for(var i=0;i<triggers.length;i++){ html += cardHtml(triggers[i]); }
+    }
+    html += '</div>';
+
+    el.innerHTML = html;
+    wire();
+  }
+
+  function wire(){
+    var kindTabs = el.querySelectorAll('[data-trg="kind"]');
+    for(var i=0;i<kindTabs.length;i++){
+      kindTabs[i].addEventListener("click", function(e){
+        formKind = e.currentTarget.getAttribute("data-k");
+        build();
+      });
+    }
+
+    var nl = el.querySelector('[data-trg="nl"]');
+    var preview = el.querySelector('[data-trg="preview"]');
+    var rruleRaw = el.querySelector('[data-trg="rruleraw"]');
+    if(nl && preview){
+      nl.addEventListener("input", function(){
+        var res = parsePlain(nl.value);
+        if(res.error){
+          lastPreview = null;
+          preview.className = "trg-preview trg-preview-err";
+          preview.textContent = res.error;
+        } else {
+          lastPreview = res;
+          preview.className = "trg-preview";
+          preview.innerHTML = esc(res.plain) + (res.defaultedTime ? ' <span class="trg-preview-note">(defaulted to 9:00 AM -- say "at 3pm" to change)</span>' : "") + '<div class="trg-preview-rrule mono">'+esc(res.rrule)+'</div>';
+          if(rruleRaw) rruleRaw.value = res.rrule;
+        }
+      });
+    }
+    if(rruleRaw){
+      rruleRaw.addEventListener("input", function(){
+        lastPreview = {rrule: rruleRaw.value, plain: rruleToPlain(rruleRaw.value)};
+        if(nl) nl.value = "";
+        if(preview){ preview.className="trg-preview"; preview.innerHTML = esc(lastPreview.plain)+'<div class="trg-preview-rrule mono">'+esc(rruleRaw.value)+'</div>'; }
+      });
+    }
+
+    var addBtn = el.querySelector('[data-trg="add"]');
+    if(addBtn){
+      addBtn.addEventListener("click", function(){
+        var slugEl = el.querySelector('[data-trg="slugsel"], [data-trg="slugfree"]');
+        var slugVal = slugEl ? slugEl.value : (opts.currentSlug||"");
+        var rec;
+        if(formKind==="schedule"){
+          var rr = rruleRaw && trim(rruleRaw.value) ? rruleRaw.value : (lastPreview && lastPreview.rrule);
+          if(!rr){ toast_("Type a schedule, e.g. \"every weekday at 9am\"."); return; }
+          rec = add({kind:"schedule", slug:slugVal, rrule:rr, title:(lastPreview&&lastPreview.plain)||""});
+        } else if(formKind==="webhook"){
+          rec = add({kind:"webhook", slug:slugVal});
+        } else {
+          var pathEl = el.querySelector('[data-trg="path"]');
+          rec = add({kind:"filechange", slug:slugVal, path: pathEl?pathEl.value:""});
+        }
+        if(rec && rec.error){ toast_(rec.error); return; }
+        build();
+      });
+    }
+
+    var toggles = el.querySelectorAll('[data-trg="toggle"]');
+    for(var ti=0;ti<toggles.length;ti++){
+      toggles[ti].addEventListener("change", function(e){
+        toggle(e.currentTarget.getAttribute("data-trg-id"), e.currentTarget.checked);
+      });
+    }
+    var removes = el.querySelectorAll('[data-trg="remove"]');
+    for(var ri=0;ri<removes.length;ri++){
+      removes[ri].addEventListener("click", function(e){
+        remove(e.currentTarget.getAttribute("data-trg-id"));
+      });
+    }
+    var runnows = el.querySelectorAll('[data-trg="runnow"]');
+    for(var rn=0;rn<runnows.length;rn++){
+      runnows[rn].addEventListener("click", function(e){
+        var ok = runNow(e.currentTarget.getAttribute("data-trg-id"));
+        toast_(ok ? "Firing now (test run -- next scheduled fire is unaffected)." : "Run engine is not wired up yet.");
+      });
+    }
+    var copies = el.querySelectorAll('[data-trg="copyurl"]');
+    for(var ci=0;ci<copies.length;ci++){
+      copies[ci].addEventListener("click", function(e){
+        var t = get(e.currentTarget.getAttribute("data-trg-id"));
+        if(t && t.url){ copyText_(t.url); toast_("Copied (not a live endpoint yet)."); }
+      });
+    }
+  }
+
+  function toast_(msg){ try{ if(typeof window.toast==="function") window.toast(msg); }catch(e){} }
+  function copyText_(s){
+    try{
+      if(window.navigator && window.navigator.clipboard && window.navigator.clipboard.writeText){
+        window.navigator.clipboard.writeText(s);
+        return;
+      }
+    }catch(e){}
+    try{
+      var ta = document.createElement("textarea");
+      ta.value = s; ta.style.position="fixed"; ta.style.opacity="0";
+      document.body.appendChild(ta); ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    }catch(e2){}
+  }
+
+  build();
+  if(hostEl){ try{ hostEl.appendChild(el); }catch(eH){} }
+
+  var unsub = onChange(function(){ build(); });
+
+  return {
+    el: el,
+    refresh: build,
+    destroy: function(){
+      unsub();
+      if(el.parentNode) el.parentNode.removeChild(el);
+    }
+  };
+}
+
+/* ------------------------------------------------------------------ boot */
+
+loadStore();
+startPoll();
+
+/* ------------------------------------------------------------------ export */
+
+window.SideTriggers = {
+  /* frozen contract v1 */
+  list: list,
+  add: add,
+  remove: remove,
+  toggle: toggle,
+  due: due,
+  nextFire: nextFire,
+  renderStudio: renderStudio,
+  /* additive, non-breaking */
+  get: get,
+  setRunner: setRunner,
+  hasRunner: hasRunner,
+  runNow: runNow,
+  checkNow: fireIfDue,
+  parseRRule: parseRRule,
+  serializeRRule: serializeRRule,
+  parsePlain: parsePlain,
+  rruleToPlain: rruleToPlain,
+  onChange: onChange,
+  VERSION: "1.0.0"
+};
+
+})();
+</script>
+<script data-mod="w3b-spaces">
+(function(){
+"use strict";
+if(window.__sideSpc)return;window.__sideSpc=1;
+
+/* ==========================================================================
+   window.SideSpaces -- Spaces picker (W3-B, prefix .spc-)
+   Frozen contract v1 (tasks/v09-abc-sprint.md):
+     SideSpaces.list() / .create(name,repo,branch) / .remove(id,force)
+     SideSpaces.current() / .setCurrent(id)
+     SideSpaces.renderPicker(hostEl, opts)
+     SideSpaces.onChange(fn)
+
+   A Space = a folder + a branch + a slice of the Brain + the nodes allowed
+   to touch it. A per-branch checkout underneath, implementation detail
+   only -- never named as such anywhere a person reads. Creating a space
+   reads like naming a project; repo/branch are optional detail behind
+   "Advanced".
+
+   Talks to the daemon routes from FROZEN CONTRACT v1 -- Wave 3:
+     GET  /api/space/list                 -> {spaces:[{id,name,repo,branch,path,dirty,nodes:[]}]}
+     POST /api/space/create {name,repo,branch}   -> {space}
+     POST /api/space/remove {id,force}    -> {ok:true, removed:bool}
+   These routes are owned by W3-A and were not live in the daemon at the
+   time this module was built (bin/side-serve.py API_ROUTES did not list
+   them yet). Every call below is guarded: a 404, a network error, a
+   timeout, or file:// with no fetch at all -- all degrade the same way,
+   to a single implicit "Default" space, clearly marked as such. Nothing
+   here pretends a route exists that does not answer.
+   ========================================================================== */
+
+var CUR_KEY = "side_space_current";
+var REQ_TIMEOUT = 4500;
+var MOBILE_MAX = 700;
+
+/* ---------------------------------------------------------------- utils */
+
+function trim(s){ return (""+(s==null?"":s)).replace(/^\s+|\s+$/g,""); }
+
+function esc(s){
+  return (""+(s==null?"":s))
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+
+function isArr(v){
+  if(typeof Array.isArray==="function") return Array.isArray(v);
+  return Object.prototype.toString.call(v)==="[object Array]";
+}
+
+function isPlainObj(v){
+  return !!(v && typeof v==="object" && !isArr(v));
+}
+
+function T(m){ try{ if(typeof window.toast==="function") window.toast(m); }catch(e){} }
+
+function slugify(s){
+  var v = trim(String(s||"")).toLowerCase();
+  v = v.replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+  return v || "space";
+}
+
+function branchFor(name){ return "space/"+slugify(name); }
+
+/* --------------------------------------------------------- daemon bridge */
+
+/* Never rejects. Always resolves {ok, status, data, error}. Times out,
+   catches, and treats a missing fetch (file://, ancient webview) the same
+   as an unreachable daemon -- callers never see a thrown exception. */
+function daemonRequest(method, url, bodyObj){
+  return new Promise(function(resolve){
+    var noFetch = !window.fetch || (window.location && window.location.protocol === "file:");
+    if(noFetch){ resolve({ok:false,status:0,data:null,error:"no daemon"}); return; }
+    var settled = false;
+    function fin(result){ if(settled) return; settled = true; resolve(result); }
+    var t = setTimeout(function(){ fin({ok:false,status:0,data:null,error:"timeout"}); }, REQ_TIMEOUT);
+    var opts = {method:method, cache:"no-store"};
+    if(bodyObj){ opts.headers = {"content-type":"application/json"}; opts.body = JSON.stringify(bodyObj); }
+    try{
+      fetch(url, opts).then(function(r){
+        var status = r ? r.status : 0;
+        var ok = !!(r && r.ok);
+        if(!r || typeof r.json !== "function"){ return {status:status, ok:ok, data:null}; }
+        return r.json()["catch"](function(){ return null; }).then(function(j){
+          return {status:status, ok:ok, data:j};
+        });
+      }).then(function(res){
+        clearTimeout(t);
+        var errMsg = null;
+        if(!res.ok){ errMsg = (res.data && (res.data.error||res.data.message)) || ("http "+res.status); }
+        fin({ok:res.ok, status:res.status, data:res.data, error:errMsg});
+      })["catch"](function(e){
+        clearTimeout(t);
+        fin({ok:false,status:0,data:null,error:(e&&e.message)||"network error"});
+      });
+    }catch(eSync){
+      clearTimeout(t);
+      fin({ok:false,status:0,data:null,error:(eSync&&eSync.message)||"request failed"});
+    }
+  });
+}
+
+/* ---------------------------------------------------------- persistence */
+
+function readCurrentRaw(){
+  try{ return window.localStorage ? localStorage.getItem(CUR_KEY) : null; }catch(e){ return null; }
+}
+function writeCurrentRaw(id){
+  try{ if(window.localStorage) localStorage.setItem(CUR_KEY, String(id)); }catch(e){}
+}
+
+/* current() is synchronous and local -- it answers "what did the user last
+   pick", not "does that space still exist". Bound to the graph via its own
+   key (side_space_current) so a reload restores it without any host splice:
+   this module owns its own persistence end to end. */
+function current(){
+  var v = readCurrentRaw();
+  return v || "default";
+}
+function setCurrent(id){
+  id = (id==null || id==="") ? "default" : String(id);
+  writeCurrentRaw(id);
+  notify({type:"current", id:id});
+  return id;
+}
+
+/* --------------------------------------------------------------- events */
+
+var LISTENERS = [];
+function notify(evt){
+  for(var i=0;i<LISTENERS.length;i++){
+    try{ LISTENERS[i](evt); }catch(e){}
+  }
+}
+function onChange(fn){
+  if(typeof fn!=="function") return function(){};
+  LISTENERS.push(fn);
+  return function(){
+    var idx=-1,i;
+    for(i=0;i<LISTENERS.length;i++){ if(LISTENERS[i]===fn){ idx=i; break; } }
+    if(idx!==-1) LISTENERS.splice(idx,1);
+  };
+}
+
+/* --------------------------------------------------------------- cache */
+
+/* CACHE.spaces: last-known list (real, from the daemon) or the synthetic
+   Default row when there is no daemon. CACHE.daemonOk distinguishes
+   "unreachable" (inject Default) from "reachable but genuinely empty"
+   (show a real empty state, creation still offered) -- these are not the
+   same thing and must not read the same in the UI. */
+var CACHE = { spaces: null, daemonOk: null };
+
+function defaultSpace(){
+  return {id:"default", name:"Default", repo:null, branch:null, path:null, dirty:false, nodes:[], implicit:true};
+}
+
+function normalizeSpace(s){
+  if(!s || typeof s !== "object") return null;
+  if(s.id==null || s.id==="") return null;
+  return {
+    id: String(s.id),
+    name: (s.name==null || s.name==="") ? String(s.id) : String(s.name),
+    repo: s.repo==null ? null : String(s.repo),
+    branch: s.branch==null ? null : String(s.branch),
+    path: s.path==null ? null : String(s.path),
+    dirty: !!s.dirty,
+    nodes: isArr(s.nodes) ? s.nodes : [],
+    implicit: false
+  };
+}
+
+/* nodes entries are documented only as "the nodes allowed to touch it" --
+   shape not frozen. Read defensively: count is always honest (array
+   length), "busy" is only ever claimed when an entry carries a status we
+   recognize from the host's own vocabulary (idle/queued/todo/run/review/
+   done). Anything else -- never invent activity we cannot back. */
+function busyInfo(space){
+  var nodes = (space && isArr(space.nodes)) ? space.nodes : [];
+  var count = nodes.length;
+  var busy = false, i, n;
+  for(i=0;i<nodes.length;i++){
+    n = nodes[i];
+    if(n && typeof n === "object" && (n.status==="run" || n.status==="queued")){ busy = true; break; }
+  }
+  return {count:count, busy:busy};
+}
+
+/* ------------------------------------------------------------- data API */
+
+function list(){
+  return new Promise(function(resolve){
+    daemonRequest("GET","/api/space/list", null).then(function(res){
+      if(res.ok && res.data && isArr(res.data.spaces)){
+        var out = [], i, n;
+        for(i=0;i<res.data.spaces.length;i++){
+          n = normalizeSpace(res.data.spaces[i]);
+          if(n) out.push(n);
+        }
+        CACHE.spaces = out;
+        CACHE.daemonOk = true;
+        resolve(out.slice(0));
+        return;
+      }
+      CACHE.spaces = [defaultSpace()];
+      CACHE.daemonOk = false;
+      resolve(CACHE.spaces.slice(0));
+    });
+  });
+}
+
+function create(name, repo, branch){
+  return new Promise(function(resolve){
+    var cleanName = trim(String(name||""));
+    if(!cleanName){ resolve({ok:false, error:"Name this space first.", space:null}); return; }
+    if(cleanName.length>80) cleanName = cleanName.slice(0,80);
+    if(CACHE.daemonOk===false){
+      resolve({ok:false, error:"Spaces need the Side app running on this machine.", space:null});
+      return;
+    }
+    var body = {name:cleanName};
+    if(repo){ body.repo = String(repo); }
+    body.branch = branch ? String(branch) : branchFor(cleanName);
+    daemonRequest("POST","/api/space/create", body).then(function(res){
+      if(res.ok && res.data && res.data.space){
+        var sp = normalizeSpace(res.data.space);
+        if(sp){
+          if(!isArr(CACHE.spaces)) CACHE.spaces = [];
+          CACHE.spaces.push(sp);
+          CACHE.daemonOk = true;
+          notify({type:"create", space:sp});
+          resolve({ok:true, error:null, space:sp});
+          return;
+        }
+      }
+      resolve({ok:false, error:(res.data&&(res.data.error||res.data.message))||res.error||"Could not create that space.", space:null});
+    });
+  });
+}
+
+/* Removing "default" (the synthetic no-daemon stand-in) is a no-op refusal
+   -- there is nothing on disk to delete. Real removals always call the
+   daemon; a dirty-space refusal from the daemon is surfaced verbatim, not
+   softened, per the destructive-action honesty rule. */
+function remove(id, force){
+  return new Promise(function(resolve){
+    id = id==null ? "" : String(id);
+    if(!id || id==="default"){
+      resolve({ok:false, removed:false, error:"There is nothing to remove \u2014 this is the built-in space."});
+      return;
+    }
+    daemonRequest("POST","/api/space/remove", {id:id, force:!!force}).then(function(res){
+      if(res.ok && res.data){
+        var removed = !!res.data.removed;
+        if(removed && isArr(CACHE.spaces)){
+          var out=[], i;
+          for(i=0;i<CACHE.spaces.length;i++){ if(CACHE.spaces[i].id!==id) out.push(CACHE.spaces[i]); }
+          CACHE.spaces = out;
+          if(current()===id){
+            setCurrent(out.length ? out[0].id : "default");
+          }
+        }
+        var reason = (res.data.error||res.data.message||res.data.reason||null);
+        notify({type:"remove", id:id, removed:removed, reason:reason});
+        resolve({ok:true, removed:removed, error: removed ? null : (reason || "This space has unsaved work, so it was not removed.")});
+        return;
+      }
+      resolve({ok:false, removed:false, error: res.error || "Could not reach the local app to remove this space."});
+    });
+  });
+}
+
+function daemonAvailable(){ return CACHE.daemonOk; }
+
+/* ============================================================ UI: picker */
+
+/* SideSpaces.renderPicker(hostEl, opts) -> {el, refresh(), destroy()}
+   Self-contained trigger + panel, same component at every width -- the
+   700px breakpoint in the CSS flips it to a bottom sheet, nothing here
+   forks into a second implementation for mobile.
+   opts.compact:true -- icon-only trigger (tight toolbars). */
+function renderPicker(hostEl, opts){
+  opts = opts || {};
+  var compact = !!opts.compact;
+
+  var wrap = document.createElement("div");
+  wrap.className = "spc-picker";
+
+  var scrim = document.createElement("div");
+  scrim.className = "spc-scrim";
+
+  var open = false;
+  var loaded = false;
+  var loading = false;
+  var newFormOpen = false;
+  var advOpen = false;
+  var branchTouched = false;
+  var createBusy = false;
+  var createErr = "";
+  var newName = "";
+  var newRepo = "";
+  var newBranch = "";
+  var pending = {}; /* id -> {stage:"confirm"|"force"|"busy", reason:string} */
+
+  function curSpaces(){ return isArr(CACHE.spaces) ? CACHE.spaces : []; }
+
+  function findSpace(id){
+    var arr = curSpaces(), i;
+    for(i=0;i<arr.length;i++){ if(arr[i].id===id) return arr[i]; }
+    return null;
+  }
+
+  function metaFor(sp){
+    var bi = busyInfo(sp);
+    if(sp.dirty) return {text:"Unsaved work", cls:"spc-meta-dirty"};
+    if(bi.busy) return {text:"Working now", cls:"spc-meta-busy"};
+    if(bi.count>0) return {text:bi.count+(bi.count===1?" node linked":" nodes linked"), cls:""};
+    return {text:"Ready", cls:""};
+  }
+
+  function isMobile(){
+    try{ return !!(window.matchMedia && window.matchMedia("(max-width:"+MOBILE_MAX+"px)").matches); }catch(e){ return false; }
+  }
+
+  /* -------------------------------------------------------- row markup */
+
+  function confirmHTML(sp){
+    var st = pending[sp.id];
+    if(!st) return "";
+    var busy = st.stage==="busy";
+    if(st.stage==="force"){
+      return '<div class="spc-confirm spc-confirm-force">'
+        +'<div class="spc-confirm-text"><span class="spc-confirm-ic">!</span><span>'+esc(st.reason||"This space has unsaved work. Removing it deletes its files and the branch underneath \u2014 nothing is saved elsewhere first.")+'</span></div>'
+        +'<div class="spc-confirm-acts">'
+          +'<button type="button" class="spc-btn" data-spc-cancel="'+esc(sp.id)+'"'+(busy?" disabled":"")+'>Cancel</button>'
+          +'<button type="button" class="spc-btn spc-btn-danger" data-spc-force="'+esc(sp.id)+'"'+(busy?" disabled":"")+'>'+(busy?"Removing\u2026":"Delete anyway")+'</button>'
+        +'</div>'
+      +'</div>';
+    }
+    /* stage === "confirm". A space we already know is dirty gets the force
+       flag right here on the first click -- the warning already told the
+       user exactly what is lost, so a second identical click just to hit
+       the same refusal again would be theater, not honesty. The two-step
+       dance (confirm -> daemon refuses -> force) is reserved for the case
+       our cached dirty flag missed: the daemon's own refusal drives that
+       second stage, using its own words, not ours. */
+    var msg = sp.dirty
+      ? "This space has unsaved work. Removing it deletes its files and the branch underneath \u2014 nothing is saved elsewhere first."
+      : "Remove \u201C"+esc(sp.name)+"\u201D? This deletes its files and the branch underneath.";
+    var goAttr = sp.dirty ? 'data-spc-force="'+esc(sp.id)+'"' : 'data-spc-remove="'+esc(sp.id)+'"';
+    return '<div class="spc-confirm'+(sp.dirty?' spc-confirm-force':'')+'">'
+      +'<div class="spc-confirm-text"><span class="spc-confirm-ic">!</span><span>'+msg+'</span></div>'
+      +'<div class="spc-confirm-acts">'
+        +'<button type="button" class="spc-btn" data-spc-cancel="'+esc(sp.id)+'"'+(busy?" disabled":"")+'>Cancel</button>'
+        +'<button type="button" class="spc-btn spc-btn-danger" '+goAttr+(busy?" disabled":"")+'>'+(busy?"Removing\u2026":(sp.dirty?"Delete anyway":"Remove"))+'</button>'
+      +'</div>'
+    +'</div>';
+  }
+
+  function rowHTML(sp){
+    var isCur = current()===sp.id;
+    var meta = metaFor(sp);
+    var bi = busyInfo(sp);
+    var titleAttr = sp.branch ? (" title=\""+esc(sp.name+(sp.repo?" \u00B7 "+sp.repo:"")+" \u00B7 "+sp.branch)+"\"") : "";
+    var html = '<div class="spc-row'+(isCur?' spc-cur':'')+'" data-spc-row="'+esc(sp.id)+'">'
+      +'<button type="button" class="spc-row-main" data-spc-switch="'+esc(sp.id)+'" role="option" aria-selected="'+(isCur?'true':'false')+'"'+titleAttr+'>'
+        +'<span class="spc-row-dot'+(sp.dirty?' spc-dirty':'')+(bi.busy?' spc-busy':'')+'"></span>'
+        +'<span class="spc-row-txt">'
+          +'<span class="spc-row-name">'+esc(sp.name)+(isCur?'<span class="spc-row-curtag">Current</span>':'')+'</span>'
+          +'<span class="spc-row-meta'+(meta.cls?(' '+meta.cls):'')+'">'+meta.text+'</span>'
+        +'</span>'
+      +'</button>';
+    if(!sp.implicit){
+      html += '<button type="button" class="spc-row-del" data-spc-del="'+esc(sp.id)+'" aria-label="Remove '+esc(sp.name)+'" title="Remove">&#10005;</button>';
+    }
+    html += '</div>';
+    if(pending[sp.id]) html += confirmHTML(sp);
+    return html;
+  }
+
+  /* -------------------------------------------------------- form markup */
+
+  function newFormHTML(){
+    var placeholderBranch = branchFor(newName || "");
+    return '<div class="spc-newform">'
+      +'<input type="text" class="spc-newname" id="spc-newname-in" maxlength="80" placeholder="Name this space" value="'+esc(newName)+'"'+(createBusy?" disabled":"")+'>'
+      +'<button type="button" class="spc-advtoggle'+(advOpen?' spc-on':'')+'" data-spc-adv aria-expanded="'+(advOpen?'true':'false')+'"><span class="spc-advtoggle-chev">&#9656;</span> Advanced</button>'
+      +'<div class="spc-adv'+(advOpen?' spc-on':'')+'">'
+        +'<label class="spc-advlbl">Repo<input type="text" class="spc-repo" id="spc-repo-in" placeholder="uses the default repo" value="'+esc(newRepo)+'"'+(createBusy?" disabled":"")+'></label>'
+        +'<label class="spc-advlbl">Branch<input type="text" class="spc-branch" id="spc-branch-in" placeholder="'+esc(placeholderBranch)+'" value="'+esc(newBranch)+'"'+(createBusy?" disabled":"")+'></label>'
+      +'</div>'
+      +'<div class="spc-newactions">'
+        +'<button type="button" class="spc-btn" data-spc-newcancel'+(createBusy?" disabled":"")+'>Cancel</button>'
+        +'<button type="button" class="spc-btn spc-btn-primary" data-spc-newgo'+(createBusy?" disabled":"")+'>'+(createBusy?"Creating\u2026":"Create")+'</button>'
+      +'</div>'
+      +(createErr?('<div class="spc-newerr">'+esc(createErr)+'</div>'):'')
+    +'</div>';
+  }
+
+  /* -------------------------------------------------------------- build */
+
+  function triggerHTML(){
+    var sp = findSpace(current()) || defaultSpace();
+    var meta = metaFor(sp);
+    var dotCls = sp.dirty ? " spc-dirty" : (busyInfo(sp).busy ? " spc-busy" : "");
+    if(compact){
+      return '<span class="spc-trigger-dot'+dotCls+'"></span>';
+    }
+    return '<span class="spc-trigger-dot'+dotCls+'"></span><span class="spc-trigger-name">'+esc(sp.name)+'</span><span class="spc-trigger-chev">&#9662;</span>';
+  }
+
+  function panelBodyHTML(){
+    if(loading && !loaded){
+      return '<div class="spc-loading">Loading spaces\u2026</div>';
+    }
+    var spaces = curSpaces();
+    var body = '<div class="spc-list" role="listbox" aria-label="Spaces">';
+    if(!spaces.length){
+      if(CACHE.daemonOk===false){
+        body += '<div class="spc-empty"><div class="spc-empty-lead">No local app connected</div>Everything runs in one shared space until the Side app is running on this machine.</div>';
+      } else {
+        body += '<div class="spc-empty"><div class="spc-empty-lead">No spaces yet</div>Create one to give an agent its own folder and branch to work in.</div>';
+      }
+    } else {
+      var i;
+      for(i=0;i<spaces.length;i++){ body += rowHTML(spaces[i]); }
+    }
+    body += '</div>';
+
+    body += '<div class="spc-newwrap">';
+    if(CACHE.daemonOk===false){
+      body += '<div class="spc-note">Spaces need the Side app running on this machine.</div>';
+    } else if(newFormOpen){
+      body += newFormHTML();
+    } else {
+      body += '<button type="button" class="spc-newbtn" data-spc-newopen><span class="spc-newbtn-ic">+</span> New space</button>';
+    }
+    body += '</div>';
+    return body;
+  }
+
+  function render(){
+    var trig = wrap.querySelector(".spc-trigger");
+    if(trig) trig.innerHTML = triggerHTML();
+
+    var panel = wrap.querySelector(".spc-panel");
+    if(panel){
+      var focusInfo = captureFocus(panel);
+      panel.innerHTML = '<div class="spc-panel-head"><span class="spc-panel-title">Spaces</span><button type="button" class="spc-panel-close" data-spc-close aria-label="Close">&#10005;</button></div>' + panelBodyHTML();
+      restoreFocus(panel, focusInfo);
+      wireRowActions(panel);
+    }
+  }
+
+  /* preserve cursor position across full-string re-renders while typing,
+     mirroring the host's own #asw-q pattern (search input keeps focus) */
+  function captureFocus(panel){
+    var a = panel.querySelector(":focus");
+    if(!a || !a.id) return null;
+    var start = null, end = null;
+    try{ start = a.selectionStart; end = a.selectionEnd; }catch(e){}
+    return {id:a.id, start:start, end:end};
+  }
+  function restoreFocus(panel, info){
+    if(!info) return;
+    var el = panel.querySelector("#"+info.id);
+    if(!el) return;
+    try{
+      el.focus();
+      if(info.start!=null && typeof el.setSelectionRange==="function") el.setSelectionRange(info.start, info.end);
+    }catch(e){}
+  }
+
+  function wireRowActions(panel){
+    var switches = panel.querySelectorAll("[data-spc-switch]");
+    var i;
+    for(i=0;i<switches.length;i++){
+      switches[i].addEventListener("click", function(){
+        var id = this.getAttribute("data-spc-switch");
+        if(id===current()){ closePanel(); return; }
+        setCurrent(id);
+        var sp = findSpace(id);
+        T("Switched to "+(sp?sp.name:id));
+        closePanel();
+      });
+    }
+    var dels = panel.querySelectorAll("[data-spc-del]");
+    for(i=0;i<dels.length;i++){
+      dels[i].addEventListener("click", function(e){
+        e.stopPropagation();
+        var id = this.getAttribute("data-spc-del");
+        var sp = findSpace(id);
+        pending[id] = {stage:"confirm", reason: sp && sp.dirty ? "This space has unsaved work. Removing it deletes its files and the branch underneath \u2014 nothing is saved elsewhere first." : ""};
+        render();
+      });
+    }
+    var cancels = panel.querySelectorAll("[data-spc-cancel]");
+    for(i=0;i<cancels.length;i++){
+      cancels[i].addEventListener("click", function(e){
+        e.stopPropagation();
+        var id = this.getAttribute("data-spc-cancel");
+        delete pending[id];
+        render();
+      });
+    }
+    var removes = panel.querySelectorAll("[data-spc-remove]");
+    for(i=0;i<removes.length;i++){
+      removes[i].addEventListener("click", function(e){
+        e.stopPropagation();
+        var id = this.getAttribute("data-spc-remove");
+        doRemove(id, false);
+      });
+    }
+    var forces = panel.querySelectorAll("[data-spc-force]");
+    for(i=0;i<forces.length;i++){
+      forces[i].addEventListener("click", function(e){
+        e.stopPropagation();
+        var id = this.getAttribute("data-spc-force");
+        doRemove(id, true);
+      });
+    }
+    var newOpen = panel.querySelector("[data-spc-newopen]");
+    if(newOpen){
+      newOpen.addEventListener("click", function(e){
+        e.stopPropagation();
+        newFormOpen = true; newName=""; newRepo=""; newBranch=""; advOpen=false; branchTouched=false; createErr="";
+        render();
+        var inp = panel.querySelector("#spc-newname-in");
+        if(inp) inp.focus();
+      });
+    }
+    var newCancel = panel.querySelector("[data-spc-newcancel]");
+    if(newCancel){
+      newCancel.addEventListener("click", function(e){
+        e.stopPropagation();
+        newFormOpen = false; createErr="";
+        render();
+      });
+    }
+    var adv = panel.querySelector("[data-spc-adv]");
+    if(adv){
+      adv.addEventListener("click", function(e){
+        e.stopPropagation();
+        advOpen = !advOpen;
+        render();
+      });
+    }
+    var nameIn = panel.querySelector("#spc-newname-in");
+    if(nameIn){
+      nameIn.addEventListener("input", function(){
+        newName = this.value;
+        render();
+      });
+      nameIn.addEventListener("keydown", function(ev){
+        if(ev.key==="Enter" || ev.keyCode===13){ doCreate(); }
+      });
+    }
+    var repoIn = panel.querySelector("#spc-repo-in");
+    if(repoIn){
+      repoIn.addEventListener("input", function(){ newRepo = this.value; });
+    }
+    var branchIn = panel.querySelector("#spc-branch-in");
+    if(branchIn){
+      branchIn.addEventListener("input", function(){ newBranch = this.value; branchTouched = true; });
+    }
+    var newGo = panel.querySelector("[data-spc-newgo]");
+    if(newGo){
+      newGo.addEventListener("click", function(e){ e.stopPropagation(); doCreate(); });
+    }
+    var closeBtn = panel.querySelector("[data-spc-close]");
+    if(closeBtn){
+      closeBtn.addEventListener("click", function(e){ e.stopPropagation(); closePanel(); });
+    }
+  }
+
+  function doRemove(id, force){
+    pending[id] = pending[id] || {stage:"confirm", reason:""};
+    pending[id].stage = "busy";
+    render();
+    remove(id, force).then(function(res){
+      if(res.ok && res.removed){
+        delete pending[id];
+        T("Removed");
+        render();
+        return;
+      }
+      pending[id] = {stage:"force", reason: (res.error || "This space has unsaved work, so it was not removed.")};
+      render();
+    });
+  }
+
+  function doCreate(){
+    if(createBusy) return;
+    var nm = trim(newName);
+    if(!nm){ createErr = "Name this space first."; render(); return; }
+    createBusy = true; createErr = "";
+    render();
+    var br = branchTouched ? trim(newBranch) : "";
+    create(nm, trim(newRepo), br).then(function(res){
+      createBusy = false;
+      if(res.ok && res.space){
+        newFormOpen = false; newName=""; newRepo=""; newBranch=""; advOpen=false; branchTouched=false;
+        setCurrent(res.space.id);
+        T("Created "+res.space.name);
+        render();
+        return;
+      }
+      createErr = res.error || "Could not create that space.";
+      render();
+    });
+  }
+
+  /* -------------------------------------------------------------- open/close */
+
+  function openPanel(){
+    if(open) return;
+    open = true;
+    pending = {};
+    var trig = wrap.querySelector(".spc-trigger");
+    var panel = wrap.querySelector(".spc-panel");
+    if(trig){ trig.classList.add("spc-open"); trig.setAttribute("aria-expanded","true"); }
+    if(panel) panel.classList.add("spc-on");
+    scrim.classList.add("spc-on");
+    if(isMobile()){ try{ document.body.classList.add("spc-lock"); }catch(e){} }
+    ensureLoaded(false);
+    render();
+    document.addEventListener("mousedown", onDocDown, true);
+    document.addEventListener("keydown", onDocKey, true);
+  }
+
+  function closePanel(){
+    if(!open) return;
+    open = false;
+    newFormOpen = false;
+    pending = {};
+    var trig = wrap.querySelector(".spc-trigger");
+    var panel = wrap.querySelector(".spc-panel");
+    if(trig){ trig.classList.remove("spc-open"); trig.setAttribute("aria-expanded","false"); }
+    if(panel) panel.classList.remove("spc-on");
+    scrim.classList.remove("spc-on");
+    try{ document.body.classList.remove("spc-lock"); }catch(e){}
+    document.removeEventListener("mousedown", onDocDown, true);
+    document.removeEventListener("keydown", onDocKey, true);
+  }
+
+  function onDocDown(e){
+    if(wrap.contains(e.target)) return;
+    closePanel();
+  }
+  function onDocKey(e){
+    if(e.keyCode===27 || e.key==="Escape") closePanel();
+  }
+
+  function ensureLoaded(force){
+    if(loading) return;
+    if(loaded && !force) return;
+    loading = true;
+    list().then(function(spaces){
+      loading = false; loaded = true;
+      /* current() may point at a space that no longer exists (removed
+         elsewhere, or daemon just came back with a different set) --
+         fall back quietly rather than showing a picker whose "current"
+         row is not in the list. */
+      var cur = current();
+      var stillThere = false, i;
+      for(i=0;i<spaces.length;i++){ if(spaces[i].id===cur){ stillThere=true; break; } }
+      if(!stillThere && spaces.length){ setCurrent(spaces[0].id); }
+      else if(!stillThere && !spaces.length && cur!=="default"){ setCurrent("default"); }
+      render();
+    });
+  }
+
+  /* -------------------------------------------------------------- mount */
+
+  wrap.innerHTML =
+    '<button type="button" class="spc-trigger'+(compact?' spc-compact':'')+'" aria-haspopup="listbox" aria-expanded="false" title="Switch space">'+triggerHTML()+'</button>'
+    +'<div class="spc-panel" role="listbox"></div>';
+
+  var triggerBtn = wrap.querySelector(".spc-trigger");
+  triggerBtn.addEventListener("click", function(e){
+    e.stopPropagation();
+    if(open) closePanel(); else openPanel();
+  });
+
+  scrim.addEventListener("click", function(){ closePanel(); });
+
+  if(hostEl){
+    try{ hostEl.appendChild(wrap); hostEl.appendChild(scrim); }catch(eHost){}
+  }
+
+  var unsub = onChange(function(evt){
+    if(!evt) return;
+    if(evt.type==="current"){
+      var trig = wrap.querySelector(".spc-trigger");
+      if(trig) trig.innerHTML = triggerHTML();
+      if(open) render();
+      return;
+    }
+    /* create / remove from any instance (or this one) keep every mounted
+       picker in sync without each one re-fetching the daemon */
+    if(evt.type==="create" || evt.type==="remove"){
+      var trig2 = wrap.querySelector(".spc-trigger");
+      if(trig2) trig2.innerHTML = triggerHTML();
+      if(open) render();
+    }
+  });
+
+  /* kick off the first load immediately so the trigger's dot/name is
+     accurate even before the panel is ever opened */
+  ensureLoaded(false);
+
+  return {
+    el: wrap,
+    refresh: function(){ ensureLoaded(true); },
+    destroy: function(){
+      unsub();
+      closePanel();
+      if(wrap.parentNode) wrap.parentNode.removeChild(wrap);
+      if(scrim.parentNode) scrim.parentNode.removeChild(scrim);
+    }
+  };
+}
+
+/* ------------------------------------------------------------------ export */
+
+window.SideSpaces = {
+  /* frozen contract v1 */
+  list: list,
+  create: create,
+  remove: remove,
+  current: current,
+  setCurrent: setCurrent,
+  renderPicker: renderPicker,
+  onChange: onChange,
+  /* additive, non-breaking */
+  daemonAvailable: daemonAvailable,
+  VERSION: "1.0.0"
+};
+
+})();
+</script>
 <script data-mod="w2c-budget">
 (function(){
 "use strict";
@@ -27405,4 +30003,22 @@ window.SideVerify = {
 
 })();
 </script>
-
+<script data-mod="side-bootstrap">
+/* Integration bootstrap. Runs AFTER every post-SCRIPT-MARK module has parsed,
+   which is the only point where window.SideSpaces / SideTriggers exist.
+   Mounting these earlier silently no-ops (hard rule 15). */
+(function(){
+  if(window.__sideBoot)return;window.__sideBoot=1;
+  function mount(){
+    try{
+      var h=document.getElementById('spc-mount');
+      if(h&&!h.children.length&&window.SideSpaces&&window.SideSpaces.renderPicker){
+        window.SideSpaces.renderPicker(h,{});
+      }
+    }catch(e){}
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',mount,false);
+  }else{ mount(); }
+})();
+</script>

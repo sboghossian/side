@@ -312,6 +312,67 @@ re-validated clean, so nothing broken had shipped. See hard rule 9.
 - **W2-C** Mobile approval + push — the gate as a phone-first inbox.
 - **W2-D** Run budget caps — pre-flight estimate, hard cap, ledger, stop-on-exceed.
 
+## FROZEN CONTRACT v1 — Wave 3 (daemon HTTP + UI modules)
+
+**Daemon** `bin/side-serve.py` (904 lines today; routes are allowlisted in `API_ROUTES`, all mutating
+routes already behind CSRF + Origin + bearer + Host checks — new routes MUST join that same gate).
+W3-A owns this file exclusively. Every route below is `application/json`.
+
+```
+GET  /api/acp/agents                 -> {agents:[{id,name,cmd,available,version}]}
+POST /api/acp/session {agent,cwd,spaceId}   -> {sessionId, modes:[], commands:[]}
+POST /api/acp/prompt  {sessionId,text}      -> {ok:true}
+GET  /api/acp/poll?sessionId=        -> {updates:[...], stopReason:null|string}
+POST /api/acp/permission {sessionId,requestId,outcome:"allow"|"deny"} -> {ok:true}
+POST /api/acp/stop {sessionId}       -> {ok:true}
+
+GET  /api/space/list                 -> {spaces:[{id,name,repo,branch,path,dirty,nodes:[]}]}
+POST /api/space/create {name,repo,branch}   -> {space}
+POST /api/space/remove {id,force}    -> {ok:true, removed:bool}
+```
+
+`poll` update shapes mirror ACP `session/update` verbatim so nothing is re-invented:
+`{type:"message_chunk",text}` · `{type:"plan",entries:[{content,status}]}` ·
+`{type:"tool_call",id,title,status,kind}` · `{type:"mode",mode}` ·
+`{type:"permission_request",requestId,title,options:[]}` ·
+`{type:"terminal",terminalId,output}`.
+
+**`session/request_permission` maps onto `SideGate2`.** That is the whole point: ACP's permission
+model and Side's approval gate are the same shape. Route a `permission_request` update into
+`SideGate2.push(...)` and send the decision back to `/api/acp/permission`.
+
+### `window.SideSpaces` — W3-B, prefix `.spc-`
+```js
+SideSpaces.list() / .create(name,repo,branch) / .remove(id,force)
+SideSpaces.current() / .setCurrent(id)
+SideSpaces.renderPicker(hostEl, opts)
+SideSpaces.onChange(fn)
+```
+A Space = folder + branch + Brain slice + the nodes allowed to touch it. **Git worktrees underneath,
+never the word "worktree" in the UI.** Degrade to a single implicit "Default" space with no daemon.
+
+### `window.SideTriggers` — W3-C, prefix `.trg-`
+```js
+SideTriggers.list() / .add(t) / .remove(id) / .toggle(id,on)
+SideTriggers.due(nowMs)        // -> [trigger]   pure, testable
+SideTriggers.nextFire(t,nowMs) // -> ms|null
+SideTriggers.renderStudio(hostEl, opts)
+```
+`t = {id, kind:"schedule"|"webhook"|"filechange", slug, enabled, rrule, url, path, lastFired}`.
+Implement a **RFC 5545 RRULE subset**: `FREQ` (DAILY/WEEKLY/HOURLY), `INTERVAL`, `BYDAY`, `BYHOUR`,
+`BYMINUTE`, `COUNT`, `UNTIL`. Persist `side_triggers`. A trigger that fires must respect the budget
+cap and the gate exactly as a manual run does — **autonomy never bypasses the approval path.**
+
+### `window.SideBrainWrite` — W3-D, prefix `.bwb-`
+```js
+SideBrainWrite.propose(runId, nodeId)  // -> Promise<[{text,source,confidence}]>  max 3
+SideBrainWrite.pending() / .accept(id) / .reject(id)
+SideBrainWrite.renderReview(hostEl, opts)
+```
+Closes the Brain loop: completed runs propose 0-3 facts, **approved through the same gate**, so the
+Brain compounds instead of only storing. Never write a fact without human acceptance. Cite the
+artifact each fact came from; a fact with no traceable source must not be proposed.
+
 ## Wave 3 — Engine (after W2 integrated)
 - **W3-A** ACP client adapter (Python, feature-flagged beside `claude -p`).
   Maps `session/request_permission` -> Side's gate, `session/update` -> node state stream (live, finally),

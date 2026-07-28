@@ -234,11 +234,24 @@ Antigravity does not serve.
 `ctx-core` (edges carry context, `@` menu, merge); `brain-pick` (fact → prompt chip) + `.lint-` pre-run gate.
 Brain-seed choice at onboarding (code / notes / empty). Fabricated "127 facts" was killed in `2ded46b`.
 
-**Gap.** Medium, and it is a *write* gap, not a read gap. Side's Brain is populated by seeding and by the user.
-Nobody else's is: Antigravity's agents **write back** ("contributing to a knowledge base"), Devin generates
-knowledge *suggestions* from sessions, Factory ingests from five tools continuously.
+> **CORRECTION 2026-07-28 (verified in code, supersedes the original assessment below).**
+> The Brain **does not persist anything.** There are **zero `localStorage` calls** anywhere in the Brain
+> region (lines ~17400-18700). `BRAINFACTS` (5757), `NODES_DEF` (17571), `SOURCES` (17623) and `LEARN`
+> (17627) are hardcoded arrays rendered fresh each session. The only Brain-related storage in the whole
+> app is `side_brain_seed` (3346), which records the onboarding *choice* (code/notes/empty) — not a fact.
+> Found by W3-D while building write-back; confirmed independently.
+>
+> So the gap is not "write vs read". **The Brain is a stage set.** It renders convincingly and stores
+> nothing. The live parts are real — `sideBrainChipAdd` genuinely feeds grounding chips into the next
+> prompt, and the `.lint-` pre-run gate works — but the graph, the clusters and the "learnings" feed
+> are fiction.
+>
+> This also corrects **Part 3, asset #3** below: "the Brain as a first-class plane" was true about the
+> *presentation* and false about the substance. Do not build further strategy on it until it stores.
 
-Side's Brain is a library. Theirs are a metabolism.
+**Gap.** Larger than first assessed. Antigravity's agents **write back** ("contributing to a knowledge
+base"), Devin generates knowledge *suggestions* from sessions, Factory ingests from five tools
+continuously. Side neither writes nor reads — it draws.
 
 **Verdict: ADAPT.** Close the loop: every completed run proposes 0–3 Brain facts, gated by the same approval
 mechanism. This makes the Brain compound, which is Side's stated third plane, and it's cheap.
